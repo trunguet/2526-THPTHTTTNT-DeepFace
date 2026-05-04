@@ -11,7 +11,6 @@ class AddEmployeeModule {
     this.submitBtn = document.getElementById('submit-btn');
     this.statusMessage = document.getElementById('status-message');
 
-    this.apiBaseURL = this.getApiBaseURL();
     this.init();
   }
 
@@ -24,17 +23,23 @@ class AddEmployeeModule {
     }
   }
 
-  getApiBaseURL() {
-    // Detect API base URL from environment
-    return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-  }
-
   /**
    * Handle image preview when file is selected
    */
   handleImageChange(event) {
     const file = event.target.files[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        this.showMessage('File tai len phai la anh khuon mat', 'error');
+        this.imageInput.value = '';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        this.showMessage('Anh khong duoc vuot qua 5MB', 'error');
+        this.imageInput.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         if (this.previewImage) {
@@ -52,11 +57,11 @@ class AddEmployeeModule {
   async handleSubmit(event) {
     event.preventDefault();
 
-    const fullName = document.getElementById('employee-name')?.value;
-    const employeeId = document.getElementById('employee-id')?.value;
+    const fullName = document.getElementById('employee-name')?.value.trim();
+    const employeeId = document.getElementById('employee-id')?.value.trim();
     const imageFile = this.imageInput?.files[0];
-    const email = document.getElementById('employee-email')?.value;
-    const department = document.getElementById('employee-department')?.value;
+    const email = document.getElementById('employee-email')?.value.trim();
+    const department = document.getElementById('employee-department')?.value.trim();
 
     if (!fullName || !employeeId || !imageFile || !email) {
       this.showMessage('Vui lòng điền đầy đủ thông tin', 'error');
@@ -68,7 +73,7 @@ class AddEmployeeModule {
 
     try {
       // Step 1: Upload image to MinIO
-      const imageUrl = await this.uploadImageToMinio(imageFile, employeeId);
+      const uploadResult = await this.uploadImageToMinio(imageFile, employeeId);
 
       // Step 2: Create employee record in database
       const employee = await this.createEmployeeRecord({
@@ -76,11 +81,12 @@ class AddEmployeeModule {
         employee_id: employeeId,
         email: email,
         department: department,
-        image_url: imageUrl,
+        image_url: uploadResult.image_url,
+        image_object_key: uploadResult.object_key,
       });
 
       // Step 3: Trigger vector embedding extraction
-      await this.triggerVectorExtraction(employee.id, imageUrl);
+      await this.triggerVectorExtraction(employee.id, uploadResult.image_url);
 
       this.showMessage('✓ Thêm nhân viên thành công!', 'success');
       this.form.reset();
@@ -90,8 +96,8 @@ class AddEmployeeModule {
 
       // Redirect after 2 seconds
       setTimeout(() => {
-        window.location.href = '/admin/manage_list.html';
-      }, 2000);
+        window.location.href = './manage_list.html';
+      }, 1200);
     } catch (error) {
       console.error('Error:', error);
       this.showMessage(`❌ Lỗi: ${error.message}`, 'error');
@@ -109,17 +115,11 @@ class AddEmployeeModule {
       formData.append('file', file);
       formData.append('employee_id', employeeId);
 
-      const response = await fetch(`${this.apiBaseURL}/api/employees/upload-image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload image to MinIO');
-      }
-
-      const data = await response.json();
-      return data.image_url || data.url;
+      const data = await DeepFaceAPI.post('/api/employees/upload-image', formData);
+      return {
+        image_url: data.image_url || data.url,
+        object_key: data.object_key,
+      };
     } catch (error) {
       throw new Error(`Image upload failed: ${error.message}`);
     }
@@ -130,20 +130,7 @@ class AddEmployeeModule {
    */
   async createEmployeeRecord(employeeData) {
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify(employeeData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create employee record');
-      }
-
-      return await response.json();
+      return await DeepFaceAPI.post('/api/employees', employeeData);
     } catch (error) {
       throw new Error(`Employee creation failed: ${error.message}`);
     }
@@ -154,31 +141,14 @@ class AddEmployeeModule {
    */
   async triggerVectorExtraction(employeeId, imageUrl) {
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees/${employeeId}/extract-embedding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify({ image_url: imageUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to extract embedding');
-      }
-
-      return await response.json();
+      return await DeepFaceAPI.post(
+        `/api/employees/${encodeURIComponent(employeeId)}/extract-embedding`,
+        { image_url: imageUrl }
+      );
     } catch (error) {
       console.warn(`Embedding extraction warning: ${error.message}`);
       // Non-critical error, continue
     }
-  }
-
-  /**
-   * Get authentication token from localStorage
-   */
-  getAuthToken() {
-    return localStorage.getItem('auth_token') || '';
   }
 
   /**

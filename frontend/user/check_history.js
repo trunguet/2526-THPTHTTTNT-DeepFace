@@ -1,6 +1,6 @@
 /**
  * Check History Module
- * Allows employees to quickly check their check-in/check-out history
+ * Displays employee check-in/check-out history with filters and CSV export.
  */
 
 class CheckHistoryModule {
@@ -12,136 +12,107 @@ class CheckHistoryModule {
     this.exportBtn = document.getElementById('export-btn');
     this.statsContainer = document.getElementById('stats-container');
 
-    this.apiBaseURL = this.getApiBaseURL();
-    this.history = [];
+    this.allHistory = [];
+    this.visibleHistory = [];
     this.employeeId = this.getEmployeeId();
 
     this.init();
   }
 
   init() {
+    if (!this.historyTable && !this.statsContainer) return;
+
     if (!this.employeeId) {
-      this.showError('❌ Không thể xác định mã nhân viên');
+      this.renderEmpty('Chua co ma nhan vien. Hay dang nhap demo hoac them employee_id vao URL.');
+      this.calculateStatistics();
       return;
     }
 
     this.fetchHistory();
 
-    if (this.dateFilter) {
-      this.dateFilter.addEventListener('change', () => this.filterByDate());
-    }
+    this.dateFilter?.addEventListener('change', () => this.applyFilters());
+    this.monthFilter?.addEventListener('change', () => this.applyFilters());
+    this.refreshBtn?.addEventListener('click', () => this.refreshData());
+    this.exportBtn?.addEventListener('click', () => this.exportToCSV());
 
-    if (this.monthFilter) {
-      this.monthFilter.addEventListener('change', () => this.filterByMonth());
-    }
-
-    if (this.refreshBtn) {
-      this.refreshBtn.addEventListener('click', () => this.refreshData());
-    }
-
-    if (this.exportBtn) {
-      this.exportBtn.addEventListener('click', () => this.exportToCSV());
-    }
-
-    // Auto-refresh every 60 seconds
-    setInterval(() => this.fetchHistory(), 60000);
+    setInterval(() => this.fetchHistory(false), 60000);
   }
 
-  getApiBaseURL() {
-    return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-  }
-
-  /**
-   * Get current employee ID from localStorage or URL
-   */
   getEmployeeId() {
-    // Try to get from localStorage
-    let employeeId = localStorage.getItem('employee_id');
-
-    // Or from URL query parameter
-    if (!employeeId) {
-      const params = new URLSearchParams(window.location.search);
-      employeeId = params.get('employee_id');
-    }
-
-    return employeeId;
+    const params = new URLSearchParams(window.location.search);
+    return localStorage.getItem('employee_id') || params.get('employee_id');
   }
 
-  /**
-   * Fetch access history for current employee
-   */
-  async fetchHistory() {
+  async fetchHistory(showError = true) {
+    if (!this.employeeId) return;
+    this.renderLoading();
+
     try {
-      const response = await fetch(
-        `${this.apiBaseURL}/api/employees/${this.employeeId}/access-history`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.getAuthToken()}`,
-          },
-        }
+      const data = await DeepFaceAPI.get(
+        `/api/employees/${encodeURIComponent(this.employeeId)}/access-history`
       );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch history');
-      }
-
-      this.history = await response.json();
-      this.renderHistory();
+      this.allHistory = DeepFaceAPI.normalizeList(data);
+      this.applyFilters();
       this.calculateStatistics();
     } catch (error) {
       console.error('Error fetching history:', error);
-      this.showError('Không thể tải lịch sử truy cập');
+      if (showError) this.renderEmpty(`Khong tai duoc lich su: ${error.message}`);
     }
   }
 
-  /**
-   * Render history table
-   */
   renderHistory() {
     if (!this.historyTable) return;
 
-    this.historyTable.innerHTML = '';
-
-    if (this.history.length === 0) {
-      this.historyTable.innerHTML =
-        '<tr><td colspan="5" class="text-center">Không có dữ liệu lịch sử</td></tr>';
+    if (!this.visibleHistory.length) {
+      this.renderEmpty('Khong co du lieu lich su phu hop');
       return;
     }
 
-    this.history.forEach((record, index) => {
-      const date = new Date(record.timestamp).toLocaleDateString('vi-VN');
-      const time = new Date(record.timestamp).toLocaleTimeString('vi-VN');
-      const type = record.access_type === 'check_in' ? '📍 Check-in' : '📤 Check-out';
-      const statusClass = record.status === 'allowed' ? 'status-allowed' : 'status-denied';
-
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${index + 1}</td>
-        <td>${date}</td>
-        <td>${time}</td>
-        <td>${type}</td>
-        <td class="camera-location">${record.camera_location || 'N/A'}</td>
-        <td><span class="status-badge ${statusClass}">${record.status === 'allowed' ? '✓ Cho phép' : '✗ Từ chối'}</span></td>
-      `;
-      this.historyTable.appendChild(row);
-    });
+    this.historyTable.innerHTML = this.visibleHistory
+      .map((record, index) => {
+        const date = new Date(record.timestamp);
+        const statusClass = record.status === 'allowed' ? 'status-allowed' : 'status-denied';
+        const statusLabel = record.status === 'allowed' ? 'Cho phep' : 'Tu choi';
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('vi-VN')}</td>
+            <td>${Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleTimeString('vi-VN')}</td>
+            <td>${DeepFaceAPI.escapeHTML(record.access_type === 'check_out' ? 'Check-out' : 'Check-in')}</td>
+            <td class="camera-location">${DeepFaceAPI.escapeHTML(record.camera_location || 'N/A')}</td>
+            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+          </tr>
+        `;
+      })
+      .join('');
   }
 
-  /**
-   * Calculate and display statistics
-   */
+  renderLoading() {
+    if (!this.historyTable) return;
+    this.historyTable.innerHTML =
+      '<tr><td colspan="6" class="text-center">Dang tai du lieu...</td></tr>';
+  }
+
+  renderEmpty(message) {
+    if (!this.historyTable) return;
+    this.historyTable.innerHTML = `<tr><td colspan="6" class="text-center">${DeepFaceAPI.escapeHTML(
+      message
+    )}</td></tr>`;
+  }
+
   calculateStatistics() {
     if (!this.statsContainer) return;
 
     const today = new Date().toDateString();
-    const todayRecords = this.history.filter((r) => new Date(r.timestamp).toDateString() === today);
+    const todayRecords = this.visibleHistory.filter(
+      (record) => new Date(record.timestamp).toDateString() === today
+    );
+    const checkIns = this.visibleHistory.filter((record) => record.access_type !== 'check_out');
+    const checkOuts = this.visibleHistory.filter((record) => record.access_type === 'check_out');
 
-    const checkIns = this.history.filter((r) => r.access_type === 'check_in');
-    const checkOuts = this.history.filter((r) => r.access_type === 'check_out');
-
-    const statsHTML = `
+    this.statsContainer.innerHTML = `
       <div class="stat-card">
-        <div class="stat-label">Hôm nay</div>
+        <div class="stat-label">Hom nay</div>
         <div class="stat-value">${todayRecords.length}</div>
       </div>
       <div class="stat-card">
@@ -153,81 +124,70 @@ class CheckHistoryModule {
         <div class="stat-value">${checkOuts.length}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Tổng</div>
-        <div class="stat-value">${this.history.length}</div>
+        <div class="stat-label">Tong</div>
+        <div class="stat-value">${this.visibleHistory.length}</div>
       </div>
     `;
-
-    this.statsContainer.innerHTML = statsHTML;
   }
 
-  /**
-   * Filter history by specific date
-   */
-  filterByDate() {
+  applyFilters() {
     const selectedDate = this.dateFilter?.value;
-    if (!selectedDate) {
-      this.fetchHistory();
-      return;
-    }
-
-    const selected = new Date(selectedDate).toDateString();
-    const filtered = this.history.filter((r) => new Date(r.timestamp).toDateString() === selected);
-
-    this.history = filtered;
-    this.renderHistory();
-  }
-
-  /**
-   * Filter history by month
-   */
-  filterByMonth() {
     const selectedMonth = this.monthFilter?.value;
-    if (!selectedMonth) {
-      this.fetchHistory();
-      return;
-    }
 
-    const [year, month] = selectedMonth.split('-');
-    const filtered = this.history.filter((r) => {
-      const date = new Date(r.timestamp);
-      return date.getFullYear() === parseInt(year) && date.getMonth() + 1 === parseInt(month);
+    this.visibleHistory = this.allHistory.filter((record) => {
+      const timestamp = new Date(record.timestamp);
+      if (Number.isNaN(timestamp.getTime())) return false;
+
+      if (selectedDate) {
+        const selected = new Date(`${selectedDate}T00:00:00`).toDateString();
+        if (timestamp.toDateString() !== selected) return false;
+      }
+
+      if (selectedMonth) {
+        const [year, month] = selectedMonth.split('-').map(Number);
+        if (timestamp.getFullYear() !== year || timestamp.getMonth() + 1 !== month) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
-    this.history = filtered;
     this.renderHistory();
+    this.calculateStatistics();
   }
 
-  /**
-   * Refresh data
-   */
   refreshData() {
     this.fetchHistory();
-    this.showSuccess('✓ Đã cập nhật dữ liệu');
+    this.showNotification('Da cap nhat du lieu', 'success');
   }
 
-  /**
-   * Export history to CSV
-   */
   exportToCSV() {
-    if (this.history.length === 0) {
-      this.showError('❌ Không có dữ liệu để xuất');
+    if (!this.visibleHistory.length) {
+      this.showNotification('Khong co du lieu de xuat CSV', 'error');
       return;
     }
 
-    let csv = 'STT,Ngày,Giờ,Loại,Vị trí Camera,Trạng thái\n';
+    const rows = [
+      ['STT', 'Ngay', 'Gio', 'Loai', 'Vi tri Camera', 'Trang thai'],
+      ...this.visibleHistory.map((record, index) => {
+        const date = new Date(record.timestamp);
+        return [
+          index + 1,
+          Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('vi-VN'),
+          Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleTimeString('vi-VN'),
+          record.access_type === 'check_out' ? 'Check-out' : 'Check-in',
+          record.camera_location || 'N/A',
+          record.status === 'allowed' ? 'Cho phep' : 'Tu choi',
+        ];
+      }),
+    ];
 
-    this.history.forEach((record, index) => {
-      const date = new Date(record.timestamp).toLocaleDateString('vi-VN');
-      const time = new Date(record.timestamp).toLocaleTimeString('vi-VN');
-      const type = record.access_type === 'check_in' ? 'Check-in' : 'Check-out';
-      const status = record.status === 'allowed' ? 'Cho phép' : 'Từ chối';
+    const csv = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
 
-      csv += `${index + 1},"${date}","${time}","${type}","${record.camera_location || 'N/A'}","${status}"\n`;
-    });
-
-    // Create blob and download
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -235,57 +195,18 @@ class CheckHistoryModule {
     link.click();
     window.URL.revokeObjectURL(url);
 
-    this.showSuccess('✓ Đã tải xuống file CSV');
+    this.showNotification('Da tai file CSV', 'success');
   }
 
-  /**
-   * Get authentication token
-   */
-  getAuthToken() {
-    return localStorage.getItem('auth_token') || '';
-  }
-
-  /**
-   * Show success message
-   */
-  showSuccess(message) {
-    this.showNotification(message, 'success');
-  }
-
-  /**
-   * Show error message
-   */
-  showError(message) {
-    this.showNotification(message, 'error');
-  }
-
-  /**
-   * Show notification
-   */
   showNotification(message, type) {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 20px;
-      border-radius: 5px;
-      z-index: 1000;
-      animation: slideIn 0.3s ease-out;
-      background-color: ${type === 'success' ? '#10b981' : '#ef4444'};
-      color: white;
-    `;
     document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
+    setTimeout(() => notification.remove(), 3500);
   }
 }
 
-// Initialize module when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   window.checkHistoryModule = new CheckHistoryModule();
 });

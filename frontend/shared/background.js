@@ -18,6 +18,7 @@ class MeshGradientBackground {
     this.createContainer();
     this.createSVG();
     this.createBlobs();
+    this.createParticles();
     // CSS animations handle the movement - no JS needed for linear movement
     // This ensures smooth 60fps performance with GPU acceleration
   }
@@ -85,6 +86,18 @@ class MeshGradientBackground {
 
     // Randomize z-index layering for depth effect
     this.randomizeLayering();
+  }
+
+  createParticles() {
+    for (let index = 0; index < 28; index += 1) {
+      const particle = document.createElement('span');
+      particle.className = 'ambient-particle';
+      particle.style.setProperty('--particle-left', `${Math.round(Math.random() * 100)}%`);
+      particle.style.setProperty('--particle-duration', `${10 + Math.random() * 12}s`);
+      particle.style.setProperty('--particle-drift', `${Math.round(Math.random() * 90 - 45)}px`);
+      particle.style.animationDelay = `${Math.random() * -16}s`;
+      this.container.appendChild(particle);
+    }
   }
 
   /**

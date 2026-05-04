@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cai Dat - Admin DeepFace</title>
+    <link rel="stylesheet" href="../shared/background.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="admin-container">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <span>DeepFace</span>
+          </div>
+        </div>
+        <nav class="sidebar-nav">
+          <li><a href="./index.html">Dashboard</a></li>
+          <li><a href="./add_employee.html">Them Nhan Vien</a></li>
+          <li><a href="./manage_list.html">Quan Ly Danh Sach</a></li>
+          <li><a href="./view_logs.html">Xem Nhat Ky</a></li>
+          <li><a href="./settings.html" class="active">Cai Dat</a></li>
+          <li><a href="./login.html">Dang Nhap</a></li>
+        </nav>
+      </aside>
+
+      <div class="main-content">
+        <header class="header">
+          <h1 class="header-title">Cai Dat He Thong</h1>
+        </header>
+
+        <div class="content-area">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Ket Noi Backend</h2>
+            </div>
+            <div style="display: grid; gap: 14px; max-width: 720px">
+              <label style="color: #e0e7ff; font-weight: 600" for="api-base-url">
+                Backend API URL
+              </label>
+              <input
+                id="api-base-url"
+                type="url"
+                placeholder="http://localhost:18000"
+                style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff"
+              />
+              <div style="display: flex; gap: 10px; flex-wrap: wrap">
+                <button class="btn btn-primary" id="save-api-url">Luu Cau Hinh</button>
+                <button class="btn btn-secondary" id="test-api-url">Kiem Tra Ket Noi</button>
+                <button class="btn btn-secondary" id="reset-api-url">Dung Mac Dinh</button>
+              </div>
+              <div id="settings-status" class="status-message" style="display: none"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Phien Demo</h2>
+            </div>
+            <p style="color: #cbd5e1; margin-bottom: 16px">
+              Backend hien tai chua co luong dang nhap that. Nut nay tao token demo de frontend gui Authorization header khi test API.
+            </p>
+            <button class="btn btn-primary" id="create-demo-session">Tao Token Demo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../shared/background.js"></script>
+    <script src="../shared/api.js"></script>
+    <script src="./api.js"></script>
+    <script src="./settings.js"></script>
+  </body>
+</html>

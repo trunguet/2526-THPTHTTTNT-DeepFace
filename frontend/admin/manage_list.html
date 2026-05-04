@@ -91,12 +91,14 @@
     <!-- Background -->
     <script src="../shared/background.js"></script>
     <!-- Module Scripts -->
+    <script src="../shared/api.js"></script>
+    <script src="./api.js"></script>
     <script src="./manage_list.js"></script>
     <script>
       function handleLogout() {
         if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
           localStorage.removeItem('auth_token');
-          window.location.href = '/login.html';
+          window.location.href = './login.html';
         }
       }
     </script>

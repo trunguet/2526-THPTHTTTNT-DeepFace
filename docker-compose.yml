@@ -1,24 +1,111 @@
 services:
-# Lưu trữ ảnh (MinIO):
-  minio:
-    image: minio/minio
-    container_name: minio
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: deepface_backend
     ports:
-      - "9000:9000" # Cổng cho API (Dùng cho Backend)
-      - "9001:9001" # Cổng cho Console (Dùng trên Web)
+      - "18000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://deepface:deepface_password@postgres:5432/deepface
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: password123
+      QDRANT_URL: http://qdrant:6333
+      PUBLIC_API_BASE_URL: http://localhost:18000
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - qdrant
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: deepface_worker
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://deepface:deepface_password@postgres:5432/deepface
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: password123
+      QDRANT_URL: http://qdrant:6333
+      PUBLIC_API_BASE_URL: http://localhost:18000
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - qdrant
+    restart: unless-stopped
+
+  frontend-admin:
+    build:
+      context: .
+      dockerfile: frontend/admin/Dockerfile
+    container_name: deepface_frontend_admin
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+
+  frontend-user:
+    build:
+      context: .
+      dockerfile: frontend/user/Dockerfile
+    container_name: deepface_frontend_user
+    ports:
+      - "3002:80"
+    depends_on:
+      - backend
+
+  minio:
+    image: minio/minio:latest
+    container_name: deepface_minio
+    ports:
+      - "19000:9000"
+      - "19001:9001"
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: password123
     volumes:
-      - ./database/minio_data:/data
+      - minio_data:/data
     command: server /data --console-address ":9001"
-# Lưu trữ vector khuôn mặt (Qdrant):
-  qdrant:
-    image: qdrant/qdrant
-    container_name: qdrant_db
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: deepface_postgres
     ports:
-      - "6333:6333" # Cổng cho API & Dashboard (Web)
-      # http://localhost:6333/dashboard
-      - "6334:6334" # Cổng gRPC (Dùng cho Backend tốc độ cao)
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: deepface
+      POSTGRES_USER: deepface
+      POSTGRES_PASSWORD: deepface_password
     volumes:
-      - ./database/qdrant_data:/qdrant/storage
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: deepface_redis
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: deepface_qdrant
+    ports:
+      - "16333:6333"
+      - "16334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  minio_data:
+  qdrant_data:
+  postgres_data:
+  redis_data:

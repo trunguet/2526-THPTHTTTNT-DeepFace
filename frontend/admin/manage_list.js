@@ -1,19 +1,18 @@
 /**
  * Manage Employee List Module
- * Handles display, edit, and delete operations for employee list
+ * Handles employee listing, searching, and delete actions.
  */
 
 class ManageEmployeeListModule {
   constructor() {
-    this.employeeTable = document.getElementById('employee-table');
     this.tableBody = document.getElementById('employee-table-body');
     this.searchInput = document.getElementById('search-employee');
     this.deleteModal = document.getElementById('delete-modal');
     this.confirmDeleteBtn = document.getElementById('confirm-delete');
     this.cancelDeleteBtn = document.getElementById('cancel-delete');
 
-    this.apiBaseURL = this.getApiBaseURL();
-    this.employees = [];
+    this.allEmployees = [];
+    this.visibleEmployees = [];
     this.selectedEmployeeId = null;
 
     this.init();
@@ -22,187 +21,145 @@ class ManageEmployeeListModule {
   init() {
     this.fetchEmployees();
 
-    if (this.searchInput) {
-      this.searchInput.addEventListener('input', (e) => this.filterEmployees(e.target.value));
-    }
+    this.searchInput?.addEventListener('input', (event) => {
+      this.filterEmployees(event.target.value);
+    });
 
-    if (this.confirmDeleteBtn) {
-      this.confirmDeleteBtn.addEventListener('click', () => this.deleteEmployee());
-    }
-
-    if (this.cancelDeleteBtn) {
-      this.cancelDeleteBtn.addEventListener('click', () => this.closeDeleteModal());
-    }
+    this.confirmDeleteBtn?.addEventListener('click', () => this.deleteEmployee());
+    this.cancelDeleteBtn?.addEventListener('click', () => this.closeDeleteModal());
   }
 
-  getApiBaseURL() {
-    return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-  }
-
-  /**
-   * Fetch all employees from backend
-   */
   async fetchEmployees() {
+    this.renderLoading();
+
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees`, {
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch employees');
-      }
-
-      this.employees = await response.json();
+      const data = await DeepFaceAPI.get('/api/employees');
+      this.allEmployees = DeepFaceAPI.normalizeList(data);
+      this.visibleEmployees = [...this.allEmployees];
       this.renderTable();
     } catch (error) {
       console.error('Error fetching employees:', error);
-      this.showError('Không thể tải danh sách nhân viên');
+      this.renderEmpty(`Khong tai duoc danh sach nhan vien: ${error.message}`);
     }
   }
 
-  /**
-   * Render employee table
-   */
   renderTable() {
     if (!this.tableBody) return;
 
-    this.tableBody.innerHTML = '';
-
-    if (this.employees.length === 0) {
-      this.tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Không có nhân viên nào</td></tr>';
+    if (!this.visibleEmployees.length) {
+      this.renderEmpty('Khong co nhan vien phu hop');
       return;
     }
 
-    this.employees.forEach((employee, index) => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${index + 1}</td>
-        <td>${employee.full_name}</td>
-        <td>${employee.employee_id}</td>
-        <td>${employee.email}</td>
-        <td>${employee.department || 'N/A'}</td>
-        <td>
-          <button class="btn btn-sm btn-edit" onclick="manageModule.editEmployee(${employee.id})">Sửa</button>
-          <button class="btn btn-sm btn-delete" onclick="manageModule.openDeleteModal(${employee.id})">Xóa</button>
-        </td>
-      `;
-      this.tableBody.appendChild(row);
+    this.tableBody.innerHTML = this.visibleEmployees
+      .map((employee, index) => {
+        const id = employee.id || employee.employee_id;
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${DeepFaceAPI.escapeHTML(employee.full_name || employee.name || 'N/A')}</td>
+            <td>${DeepFaceAPI.escapeHTML(employee.employee_id || id || 'N/A')}</td>
+            <td>${DeepFaceAPI.escapeHTML(employee.email || 'N/A')}</td>
+            <td>${DeepFaceAPI.escapeHTML(employee.department || 'N/A')}</td>
+            <td>
+              <button class="btn btn-sm btn-edit" data-action="edit" data-id="${DeepFaceAPI.escapeHTML(id)}">Sua</button>
+              <button class="btn btn-sm btn-delete" data-action="delete" data-id="${DeepFaceAPI.escapeHTML(id)}">Xoa</button>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    this.tableBody.querySelectorAll('button[data-action]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.action;
+        const id = button.dataset.id;
+        if (action === 'edit') this.editEmployee(id);
+        if (action === 'delete') this.openDeleteModal(id);
+      });
     });
   }
 
-  /**
-   * Filter employees by search term
-   */
+  renderLoading() {
+    if (!this.tableBody) return;
+    this.tableBody.innerHTML =
+      '<tr><td colspan="6" class="text-center">Dang tai du lieu...</td></tr>';
+  }
+
+  renderEmpty(message) {
+    if (!this.tableBody) return;
+    this.tableBody.innerHTML = `<tr><td colspan="6" class="text-center">${DeepFaceAPI.escapeHTML(
+      message
+    )}</td></tr>`;
+  }
+
   filterEmployees(searchTerm) {
-    const filtered = this.employees.filter(
-      (emp) =>
-        emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const keyword = searchTerm.trim().toLowerCase();
 
-    this.employees = filtered;
-    this.renderTable();
-
-    // If search is cleared, reload all
-    if (!searchTerm.trim()) {
-      this.fetchEmployees();
+    if (!keyword) {
+      this.visibleEmployees = [...this.allEmployees];
+      this.renderTable();
+      return;
     }
+
+    this.visibleEmployees = this.allEmployees.filter((employee) => {
+      const searchable = [
+        employee.full_name,
+        employee.name,
+        employee.employee_id,
+        employee.email,
+        employee.department,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return searchable.includes(keyword);
+    });
+
+    this.renderTable();
   }
 
-  /**
-   * Edit employee (navigate to edit page or open modal)
-   */
   editEmployee(employeeId) {
-    window.location.href = `/admin/edit_employee.html?id=${employeeId}`;
+    this.showAlert(
+      `Chuc nang sua nhan vien ${employeeId} can backend PUT /api/employees/{id} va form edit.`,
+      'info'
+    );
   }
 
-  /**
-   * Open delete confirmation modal
-   */
   openDeleteModal(employeeId) {
     this.selectedEmployeeId = employeeId;
-    if (this.deleteModal) {
-      this.deleteModal.style.display = 'block';
-    }
+    if (this.deleteModal) this.deleteModal.style.display = 'block';
   }
 
-  /**
-   * Close delete confirmation modal
-   */
   closeDeleteModal() {
-    if (this.deleteModal) {
-      this.deleteModal.style.display = 'none';
-    }
+    if (this.deleteModal) this.deleteModal.style.display = 'none';
     this.selectedEmployeeId = null;
   }
 
-  /**
-   * Delete employee
-   */
   async deleteEmployee() {
     if (!this.selectedEmployeeId) return;
 
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees/${this.selectedEmployeeId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete employee');
-      }
-
+      await DeepFaceAPI.delete(`/api/employees/${encodeURIComponent(this.selectedEmployeeId)}`);
       this.closeDeleteModal();
-      this.fetchEmployees(); // Reload the list
-      this.showSuccess('✓ Xóa nhân viên thành công');
+      await this.fetchEmployees();
+      this.showAlert('Da xoa nhan vien thanh cong', 'success');
     } catch (error) {
       console.error('Error deleting employee:', error);
-      this.showError('❌ Không thể xóa nhân viên');
+      this.showAlert(`Khong the xoa nhan vien: ${error.message}`, 'error');
     }
   }
 
-  /**
-   * Get authentication token
-   */
-  getAuthToken() {
-    return localStorage.getItem('auth_token') || '';
-  }
-
-  /**
-   * Show success message
-   */
-  showSuccess(message) {
-    this.showAlert(message, 'success');
-  }
-
-  /**
-   * Show error message
-   */
-  showError(message) {
-    this.showAlert(message, 'error');
-  }
-
-  /**
-   * Show alert message
-   */
   showAlert(message, type) {
     const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
+    alert.className = `notification notification-${type}`;
     alert.textContent = message;
     document.body.appendChild(alert);
 
-    setTimeout(() => {
-      alert.remove();
-    }, 3000);
+    setTimeout(() => alert.remove(), 3500);
   }
 }
 
-// Global instance for inline onclick handlers
 let manageModule;
 
 document.addEventListener('DOMContentLoaded', () => {

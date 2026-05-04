@@ -1,6 +1,6 @@
 /**
  * View Logs Module
- * Handles display of access logs and stranger alerts
+ * Handles access logs, filters, and stranger alerts.
  */
 
 class ViewLogsModule {
@@ -12,268 +12,174 @@ class ViewLogsModule {
     this.filterTypeSelect = document.getElementById('filter-type');
     this.refreshBtn = document.getElementById('refresh-btn');
 
-    this.apiBaseURL = this.getApiBaseURL();
-    this.logs = [];
+    this.allLogs = [];
+    this.visibleLogs = [];
     this.alerts = [];
 
     this.init();
   }
 
   init() {
-    this.fetchLogs();
-    this.fetchAlerts();
+    this.refreshData(false);
 
-    if (this.refreshBtn) {
-      this.refreshBtn.addEventListener('click', () => this.refreshData());
-    }
+    this.refreshBtn?.addEventListener('click', () => this.refreshData(true));
+    [this.filterDateFrom, this.filterDateTo, this.filterTypeSelect].forEach((element) => {
+      element?.addEventListener('change', () => this.applyFilters());
+    });
 
-    if (this.filterDateFrom || this.filterDateTo || this.filterTypeSelect) {
-      [this.filterDateFrom, this.filterDateTo, this.filterTypeSelect].forEach((el) => {
-        if (el) {
-          el.addEventListener('change', () => this.applyFilters());
-        }
-      });
-    }
-
-    // Auto-refresh every 30 seconds
-    setInterval(() => this.fetchLogs(), 30000);
+    setInterval(() => this.refreshData(false), 30000);
   }
 
-  getApiBaseURL() {
-    return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-  }
-
-  /**
-   * Fetch access logs from backend
-   */
   async fetchLogs() {
-    try {
-      const response = await fetch(`${this.apiBaseURL}/api/access-logs`, {
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch logs');
-      }
-
-      this.logs = await response.json();
-      this.renderLogs();
-    } catch (error) {
-      console.error('Error fetching logs:', error);
-      this.showError('Không thể tải nhật ký truy cập');
-    }
+    const data = await DeepFaceAPI.get('/api/access-logs');
+    this.allLogs = DeepFaceAPI.normalizeList(data);
+    this.visibleLogs = [...this.allLogs];
+    this.applyFilters();
   }
 
-  /**
-   * Fetch stranger alerts from backend
-   */
   async fetchAlerts() {
-    try {
-      const response = await fetch(`${this.apiBaseURL}/api/access-logs/alerts`, {
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch alerts');
-      }
-
-      this.alerts = await response.json();
-      this.renderAlerts();
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
-    }
+    const data = await DeepFaceAPI.get('/api/access-logs/alerts');
+    this.alerts = DeepFaceAPI.normalizeList(data);
+    this.renderAlerts();
   }
 
-  /**
-   * Render access logs table
-   */
   renderLogs() {
     if (!this.logsTable) return;
 
-    this.logsTable.innerHTML = '';
-
-    if (this.logs.length === 0) {
-      this.logsTable.innerHTML = '<tr><td colspan="7" class="text-center">Không có nhật ký nào</td></tr>';
+    if (!this.visibleLogs.length) {
+      this.logsTable.innerHTML =
+        '<tr><td colspan="7" class="text-center">Khong co nhat ky phu hop</td></tr>';
       return;
     }
 
-    this.logs.forEach((log, index) => {
-      const logTime = new Date(log.timestamp).toLocaleString('vi-VN');
-      const rowClass = log.status === 'denied' ? 'row-denied' : '';
+    this.logsTable.innerHTML = this.visibleLogs
+      .map((log, index) => {
+        const status = log.status || 'unknown';
+        const statusLabel = status === 'allowed' ? 'Cho phep' : status === 'denied' ? 'Tu choi' : status;
+        return `
+          <tr class="${status === 'denied' ? 'row-denied' : ''}">
+            <td>${index + 1}</td>
+            <td>${DeepFaceAPI.escapeHTML(log.employee_name || 'N/A')}</td>
+            <td>${DeepFaceAPI.escapeHTML(log.employee_id || 'N/A')}</td>
+            <td>${DeepFaceAPI.escapeHTML(log.camera_location || 'N/A')}</td>
+            <td>${DeepFaceAPI.escapeHTML(DeepFaceAPI.formatDateTime(log.timestamp))}</td>
+            <td><span class="status-badge status-${DeepFaceAPI.escapeHTML(status)}">${DeepFaceAPI.escapeHTML(statusLabel)}</span></td>
+            <td><button class="btn btn-sm btn-view" data-id="${DeepFaceAPI.escapeHTML(log.id || index)}">Chi tiet</button></td>
+          </tr>
+        `;
+      })
+      .join('');
 
-      const row = document.createElement('tr');
-      row.className = rowClass;
-      row.innerHTML = `
-        <td>${index + 1}</td>
-        <td>${log.employee_name || 'N/A'}</td>
-        <td>${log.employee_id || 'N/A'}</td>
-        <td>${log.camera_location || 'N/A'}</td>
-        <td>${logTime}</td>
-        <td>
-          <span class="status-badge status-${log.status}">
-            ${log.status === 'allowed' ? '✓ Cho phép' : '✗ Từ chối'}
-          </span>
-        </td>
-        <td>
-          <button class="btn btn-sm btn-view" onclick="logsModule.viewDetails(${log.id})">Chi tiết</button>
-        </td>
-      `;
-      this.logsTable.appendChild(row);
+    this.logsTable.querySelectorAll('button[data-id]').forEach((button) => {
+      button.addEventListener('click', () => this.viewDetails(button.dataset.id));
     });
   }
 
-  /**
-   * Render stranger alerts
-   */
   renderAlerts() {
     if (!this.alertsSection) return;
 
-    const alertsContainer = this.alertsSection.querySelector('.alerts-container') || this.alertsSection;
-    alertsContainer.innerHTML = '';
-
-    if (this.alerts.length === 0) {
-      alertsContainer.innerHTML = '<p class="no-alerts">Không có cảnh báo người lạ</p>';
+    if (!this.alerts.length) {
+      this.alertsSection.innerHTML =
+        '<p class="no-alerts">Khong co canh bao nguoi la</p>';
       return;
     }
 
-    this.alerts.forEach((alert) => {
-      const alertTime = new Date(alert.timestamp).toLocaleString('vi-VN');
-      const alertDiv = document.createElement('div');
-      alertDiv.className = 'alert-card alert-stranger';
-      alertDiv.innerHTML = `
-        <div class="alert-header">
-          <h4>⚠️ Phát hiện người lạ</h4>
-          <span class="alert-time">${alertTime}</span>
-        </div>
-        <div class="alert-body">
-          <p><strong>Vị trí camera:</strong> ${alert.camera_location || 'N/A'}</p>
-          <p><strong>Độ tin cậy:</strong> ${(alert.confidence * 100).toFixed(2)}%</p>
-          ${alert.image_url ? `<img src="${alert.image_url}" alt="Alert" class="alert-image">` : ''}
-        </div>
-        <div class="alert-actions">
-          <button class="btn btn-sm btn-primary" onclick="logsModule.viewAlertDetails(${alert.id})">Xem chi tiết</button>
-          <button class="btn btn-sm btn-secondary" onclick="logsModule.dismissAlert(${alert.id})">Đã xử lý</button>
-        </div>
-      `;
-      alertsContainer.appendChild(alertDiv);
+    this.alertsSection.innerHTML = this.alerts
+      .map((alert) => {
+        const confidence = Number(alert.confidence ?? 0);
+        const imageHTML = alert.image_url
+          ? `<img src="${DeepFaceAPI.escapeHTML(alert.image_url)}" alt="Alert" class="alert-image">`
+          : '';
+        return `
+          <div class="alert-card alert-stranger">
+            <div class="alert-header">
+              <h4>Phat hien nguoi la</h4>
+              <span class="alert-time">${DeepFaceAPI.escapeHTML(DeepFaceAPI.formatDateTime(alert.timestamp))}</span>
+            </div>
+            <div class="alert-body">
+              <p><strong>Vi tri camera:</strong> ${DeepFaceAPI.escapeHTML(alert.camera_location || 'N/A')}</p>
+              <p><strong>Do tin cay:</strong> ${(confidence * 100).toFixed(2)}%</p>
+              ${imageHTML}
+            </div>
+            <div class="alert-actions">
+              <button class="btn btn-sm btn-primary" data-view="${DeepFaceAPI.escapeHTML(alert.id)}">Xem chi tiet</button>
+              <button class="btn btn-sm btn-secondary" data-dismiss="${DeepFaceAPI.escapeHTML(alert.id)}">Da xu ly</button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    this.alertsSection.querySelectorAll('button[data-view]').forEach((button) => {
+      button.addEventListener('click', () => this.viewAlertDetails(button.dataset.view));
+    });
+    this.alertsSection.querySelectorAll('button[data-dismiss]').forEach((button) => {
+      button.addEventListener('click', () => this.dismissAlert(button.dataset.dismiss));
     });
   }
 
-  /**
-   * Apply filters to logs
-   */
   applyFilters() {
     const dateFrom = this.filterDateFrom?.value;
     const dateTo = this.filterDateTo?.value;
     const type = this.filterTypeSelect?.value;
 
-    let filtered = this.logs;
+    this.visibleLogs = this.allLogs.filter((log) => {
+      const timestamp = new Date(log.timestamp);
+      if (dateFrom && timestamp < new Date(`${dateFrom}T00:00:00`)) return false;
+      if (dateTo && timestamp > new Date(`${dateTo}T23:59:59`)) return false;
+      if (type && type !== 'all' && log.status !== type) return false;
+      return true;
+    });
 
-    if (dateFrom) {
-      filtered = filtered.filter((log) => new Date(log.timestamp) >= new Date(dateFrom));
-    }
-
-    if (dateTo) {
-      filtered = filtered.filter((log) => new Date(log.timestamp) <= new Date(dateTo));
-    }
-
-    if (type && type !== 'all') {
-      filtered = filtered.filter((log) => log.status === type);
-    }
-
-    this.logs = filtered;
     this.renderLogs();
   }
 
-  /**
-   * View log details (can open modal or navigate to detail page)
-   */
   viewDetails(logId) {
-    console.log('Viewing details for log:', logId);
-    // Can implement modal or navigate to detail page
+    this.showNotification(`Log ${logId}: can bo sung modal chi tiet khi backend tra snapshot/image.`, 'info');
   }
 
-  /**
-   * View alert details
-   */
   viewAlertDetails(alertId) {
-    console.log('Viewing alert details:', alertId);
+    this.showNotification(`Alert ${alertId}: can bo sung modal chi tiet khi backend tra snapshot/image.`, 'info');
   }
 
-  /**
-   * Dismiss alert
-   */
   async dismissAlert(alertId) {
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/access-logs/alerts/${alertId}/dismiss`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to dismiss alert');
-      }
-
-      this.fetchAlerts();
-      this.showSuccess('✓ Đã xử lý cảnh báo');
+      await DeepFaceAPI.post(`/api/access-logs/alerts/${encodeURIComponent(alertId)}/dismiss`);
+      await this.fetchAlerts();
+      this.showNotification('Da xu ly canh bao', 'success');
     } catch (error) {
       console.error('Error dismissing alert:', error);
-      this.showError('❌ Không thể xử lý cảnh báo');
+      this.showNotification(`Khong the xu ly canh bao: ${error.message}`, 'error');
     }
   }
 
-  /**
-   * Refresh data
-   */
-  refreshData() {
-    this.fetchLogs();
-    this.fetchAlerts();
-    this.showSuccess('✓ Đã cập nhật dữ liệu');
+  async refreshData(showToast) {
+    try {
+      await Promise.all([this.fetchLogs(), this.fetchAlerts()]);
+      if (showToast) this.showNotification('Da cap nhat du lieu', 'success');
+    } catch (error) {
+      console.error('Error refreshing logs:', error);
+      if (this.logsTable) {
+        this.logsTable.innerHTML = `<tr><td colspan="7" class="text-center">Khong tai duoc nhat ky: ${DeepFaceAPI.escapeHTML(
+          error.message
+        )}</td></tr>`;
+      }
+      if (this.alertsSection) {
+        this.alertsSection.innerHTML = '<p class="no-alerts">Khong tai duoc canh bao</p>';
+      }
+      if (showToast) this.showNotification(`Khong cap nhat duoc: ${error.message}`, 'error');
+    }
   }
 
-  /**
-   * Get authentication token
-   */
-  getAuthToken() {
-    return localStorage.getItem('auth_token') || '';
-  }
-
-  /**
-   * Show success message
-   */
-  showSuccess(message) {
-    this.showNotification(message, 'success');
-  }
-
-  /**
-   * Show error message
-   */
-  showError(message) {
-    this.showNotification(message, 'error');
-  }
-
-  /**
-   * Show notification
-   */
   showNotification(message, type) {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
     document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
+    setTimeout(() => notification.remove(), 3500);
   }
 }
 
-// Global instance
 let logsModule;
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -300,3 +300,128 @@ svg {
   padding: 15px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
+
+/* Animated cyber access-control backdrop */
+html {
+  background: #020617 !important;
+}
+
+body {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(45, 212, 191, 0.22), transparent 28%),
+    radial-gradient(circle at 78% 22%, rgba(124, 196, 237, 0.18), transparent 30%),
+    linear-gradient(135deg, #020617 0%, #041312 45%, #000000 100%) !important;
+}
+
+body::before {
+  background:
+    linear-gradient(115deg, transparent 0%, rgba(45, 212, 191, 0.1) 30%, transparent 52%),
+    radial-gradient(circle at 50% 120%, rgba(16, 99, 125, 0.25), transparent 34%) !important;
+  background-size: 240% 240%, 100% 100% !important;
+  animation: auroraSweep 14s ease-in-out infinite !important;
+  z-index: 0 !important;
+}
+
+body > :not(#mesh-gradient-container) {
+  position: relative;
+  z-index: 1;
+}
+
+#mesh-gradient-container {
+  z-index: 0 !important;
+  overflow: hidden !important;
+  opacity: 0.92 !important;
+  filter: none !important;
+}
+
+#mesh-gradient-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(45, 212, 191, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 212, 191, 0.08) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 74%);
+  animation: gridDrift 18s linear infinite;
+  opacity: 0.75;
+}
+
+#mesh-gradient-container::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(45, 212, 191, 0),
+    rgba(45, 212, 191, 0.16),
+    rgba(124, 196, 237, 0.14),
+    rgba(45, 212, 191, 0)
+  );
+  animation: slowSpin 26s linear infinite;
+  opacity: 0.42;
+}
+
+#mesh-gradient-container svg {
+  filter: url(#blur-filter);
+}
+
+.ambient-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(168, 240, 234, 0.82);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.9);
+  animation: particleRise var(--particle-duration, 12s) linear infinite;
+  left: var(--particle-left, 50%);
+  top: 110%;
+  opacity: 0;
+}
+
+@keyframes auroraSweep {
+  0%,
+  100% {
+    background-position: 0% 50%, center;
+    opacity: 0.82;
+  }
+  50% {
+    background-position: 100% 50%, center;
+    opacity: 1;
+  }
+}
+
+@keyframes gridDrift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 54px 54px, 54px 54px;
+  }
+}
+
+@keyframes slowSpin {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(360deg) scale(1.03);
+  }
+}
+
+@keyframes particleRise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.8);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.75;
+  }
+  80% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(var(--particle-drift, 24px), -115vh, 0) scale(1.2);
+    opacity: 0;
+  }
+}

@@ -1,0 +1,1 @@
+window.DeepFaceAdmin = window.DeepFaceAPI;

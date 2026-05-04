@@ -1775,3 +1775,31 @@ tbody tr:hover {
     width: 100%;
   }
 }
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: min(420px, calc(100vw - 40px));
+  padding: 14px 18px;
+  border-radius: 8px;
+  z-index: 1000;
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.notification-success {
+  background: #10b981;
+}
+
+.notification-error {
+  background: #ef4444;
+}
+
+.notification-info {
+  background: #2097bc;
+}
+
+.notification-warning {
+  background: #f59e0b;
+  color: #111827;
+}

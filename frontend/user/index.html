@@ -88,7 +88,13 @@
         <!-- History Section -->
         <div id="history-section" class="section">
           <div class="card">
-            <h2 class="card-title">📋 Lịch Sử Check-in</h2>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px">
+              <h2 class="card-title" style="margin: 0">📋 Lịch Sử Check-in</h2>
+              <button class="history-back-button" id="history-back-btn" type="button" onclick="showSection('face-scan-section')">
+                <span>←</span>
+                <span>Quay Lại</span>
+              </button>
+            </div>
 
             <!-- Stats Grid -->
             <div id="stats-container" class="stats-grid"></div>
@@ -147,6 +153,8 @@
     <!-- Background -->
     <script src="../shared/background.js"></script>
     <!-- Module Scripts -->
+    <script src="../shared/api.js"></script>
+    <script src="./api.js"></script>
     <script src="./face_scan.js"></script>
     <script src="./check_history.js"></script>
     <script>
@@ -176,7 +184,7 @@
           localStorage.removeItem('auth_token');
           localStorage.removeItem('employee_id');
           localStorage.removeItem('employee_name');
-          window.location.href = '/login.html';
+          window.location.href = './login.html';
         }
       }
 
