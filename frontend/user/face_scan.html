@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xác Thực Khuôn Mặt - DeepFace</title>
+    <link rel="stylesheet" href="../shared/background.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="user-container">
+      <!-- Top Navigation -->
+      <nav class="top-nav">
+        <div class="nav-brand">
+          <span>🎭</span>
+          <span>DeepFace</span>
+          <span style="color: #a0aec0; font-weight: 400; margin-left: 10px">- Xác Thực Khuôn Mặt</span>
+        </div>
+        <div class="nav-user-info">
+          <a href="./index.html" style="color: #7cc4ed; text-decoration: none; font-weight: 600">← Quay Lại</a>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <div class="content" style="max-width: 1000px; margin: 0 auto">
+        <div class="card">
+          <h2 class="card-title">👤 Hệ Thống Xác Thực Khuôn Mặt</h2>
+
+          <div class="scan-container">
+            <!-- Video Stream -->
+            <div>
+              <div class="video-container">
+                <video id="video-stream" width="640" height="480" autoplay></video>
+                <canvas id="canvas-stream" style="display: none"></canvas>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div>
+              <div id="status-display" class="status-display"></div>
+
+              <div class="video-controls">
+                <div class="control-group">
+                  <button class="btn btn-primary" id="start-btn">
+                    <span>▶️</span>
+                    <span>Khởi Động Camera</span>
+                  </button>
+                </div>
+
+                <div class="control-group">
+                  <button class="btn btn-warning" id="capture-btn" disabled>
+                    <span>📸</span>
+                    <span>Chụp & Xác Thực</span>
+                  </button>
+                </div>
+
+                <div class="control-group">
+                  <button class="btn btn-secondary" id="stop-btn" disabled>
+                    <span>⏹️</span>
+                    <span>Dừng Camera</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style="background: rgba(124, 196, 237, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 3px solid #7cc4ed">
+                <h4 style="color: #7cc4ed; margin-bottom: 10px">💡 Hướng Dẫn Sử Dụng:</h4>
+                <ul style="color: #cbd5e1; font-size: 13px; line-height: 1.8; padding-left: 20px">
+                  <li>✓ Nhấn "Khởi Động Camera" để bắt đầu sử dụng webcam</li>
+                  <li>✓ Đảm bảo khuôn mặt sáng rõ và nằm trong khung hình</li>
+                  <li>✓ Nhấn "Chụp & Xác Thực" để gửi ảnh xác thực</li>
+                  <li>✓ Chờ hệ thống xử lý và hiển thị kết quả</li>
+                  <li>✓ Nếu xác thực thất bại, hãy chụp lại với điều kiện ánh sáng tốt hơn</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Result Display -->
+          <div id="result-container" style="margin-top: 30px"></div>
+
+          <!-- Tips -->
+          <div style="background: rgba(245, 158, 11, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid rgba(245, 158, 11, 0.3)">
+            <h4 style="color: #fbbf24; margin-bottom: 10px">⚠️ Lưu Ý Quan Trọng:</h4>
+            <ul style="color: #cbd5e1; font-size: 13px; line-height: 1.8; padding-left: 20px">
+              <li>Hình ảnh khuôn mặt phải rõ ràng, không bị mờ</li>
+              <li>Tránh đeo mắt kính đen hoặc che phủ quá mặt</li>
+              <li>Ánh sáng phải đủ để nhìn rõ đôi mắt</li>
+              <li>Khuôn mặt nên hướng trực tiếp về phía camera</li>
+              <li>Không cần mặt mũi bình thường, chỉ cần khuôn mặt nhận dạng được</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <script src="../shared/background.js"></script>
+    <!-- Module Scripts -->
+    <script src="./face_scan.js"></script>
+  </body>
+</html>

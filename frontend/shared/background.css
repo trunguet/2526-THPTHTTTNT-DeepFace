@@ -1,0 +1,302 @@
+/* Mesh Gradient Background - Shared for all pages */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background: #000000 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+body {
+  background: #000000 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #ffffff;
+  overflow: hidden;
+  width: 100vw !important;
+  height: 100vh !important;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000000 !important;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Mesh Gradient Container */
+#mesh-gradient-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  filter: url(#blur-filter);
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.blob {
+  mix-blend-mode: screen;
+  filter: blur(80px);
+  will-change: transform, opacity;
+}
+
+.blob:nth-child(1) {
+  fill: #138E86;
+  animation: blobFloat1 24s infinite linear, blobPulse 8s infinite ease-in-out;
+  transform-origin: 20% 50%;
+}
+
+.blob:nth-child(2) {
+  fill: #1AA39A;
+  animation: blobFloat2 28s infinite linear, blobPulse 9s infinite ease-in-out 1.5s;
+  transform-origin: 50% 50%;
+}
+
+.blob:nth-child(3) {
+  fill: #1FB5A7;
+  animation: blobFloat3 32s infinite linear, blobPulse 7s infinite ease-in-out 3s;
+  transform-origin: 80% 30%;
+}
+
+.blob:nth-child(4) {
+  fill: #2DD4BF;
+  animation: blobFloat4 26s infinite linear, blobPulse 10s infinite ease-in-out 4.5s;
+  transform-origin: 30% 80%;
+}
+
+.blob:nth-child(5) {
+  fill: #4CDACF;
+  animation: blobFloat5 30s infinite linear, blobPulse 8.5s infinite ease-in-out 6s;
+  transform-origin: 70% 70%;
+}
+
+.blob:nth-child(6) {
+  fill: #6EE7DE;
+  animation: blobFloat6 27s infinite linear, blobPulse 9.5s infinite ease-in-out 7.5s;
+  transform-origin: 50% 20%;
+}
+
+.blob:nth-child(7) {
+  fill: #A8F0EA;
+  animation: blobFloat7 25s infinite linear, blobPulse 7.5s infinite ease-in-out 9s;
+  transform-origin: 40% 40%;
+}
+
+/* Linear movement animations for each blob */
+@keyframes blobFloat1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(200px, -180px) scale(1.15);
+  }
+  50% {
+    transform: translate(-150px, 150px) scale(0.85);
+  }
+  75% {
+    transform: translate(120px, -80px) scale(1.1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes blobFloat2 {
+  0% {
+    transform: translate(100px, -50px) scale(0.9);
+  }
+  25% {
+    transform: translate(-100px, 120px) scale(1.05);
+  }
+  50% {
+    transform: translate(180px, -200px) scale(1.2);
+  }
+  75% {
+    transform: translate(-80px, 50px) scale(0.95);
+  }
+  100% {
+    transform: translate(100px, -50px) scale(0.9);
+  }
+}
+
+@keyframes blobFloat3 {
+  0% {
+    transform: translate(-150px, 100px) scale(1.05);
+  }
+  25% {
+    transform: translate(150px, -150px) scale(0.9);
+  }
+  50% {
+    transform: translate(-100px, -180px) scale(1.1);
+  }
+  75% {
+    transform: translate(200px, 100px) scale(1.0);
+  }
+  100% {
+    transform: translate(-150px, 100px) scale(1.05);
+  }
+}
+
+@keyframes blobFloat4 {
+  0% {
+    transform: translate(50px, 180px) scale(1.1);
+  }
+  25% {
+    transform: translate(-180px, -80px) scale(0.95);
+  }
+  50% {
+    transform: translate(120px, 150px) scale(1.05);
+  }
+  75% {
+    transform: translate(-100px, -200px) scale(1.15);
+  }
+  100% {
+    transform: translate(50px, 180px) scale(1.1);
+  }
+}
+
+@keyframes blobFloat5 {
+  0% {
+    transform: translate(-100px, -150px) scale(0.95);
+  }
+  25% {
+    transform: translate(180px, 80px) scale(1.12);
+  }
+  50% {
+    transform: translate(-150px, 200px) scale(1.0);
+  }
+  75% {
+    transform: translate(100px, -100px) scale(0.98);
+  }
+  100% {
+    transform: translate(-100px, -150px) scale(0.95);
+  }
+}
+
+@keyframes blobFloat6 {
+  0% {
+    transform: translate(150px, 50px) scale(1.08);
+  }
+  25% {
+    transform: translate(-100px, -200px) scale(0.92);
+  }
+  50% {
+    transform: translate(200px, -80px) scale(1.1);
+  }
+  75% {
+    transform: translate(-150px, 150px) scale(1.02);
+  }
+  100% {
+    transform: translate(150px, 50px) scale(1.08);
+  }
+}
+
+@keyframes blobFloat7 {
+  0% {
+    transform: translate(-80px, 120px) scale(1.0);
+  }
+  25% {
+    transform: translate(180px, -100px) scale(1.08);
+  }
+  50% {
+    transform: translate(-120px, -180px) scale(0.93);
+  }
+  75% {
+    transform: translate(100px, 200px) scale(1.12);
+  }
+  100% {
+    transform: translate(-80px, 120px) scale(1.0);
+  }
+}
+
+/* Opacity pulse (breathing effect) */
+@keyframes blobPulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+/* Main Content Area */
+#app, #admin-app {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 196, 237, 0.6);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 196, 237, 0.8);
+}
+
+/**
+ * Glassmorphism Panel
+ * Use this class to create frosted glass effect UI elements
+ * that float above the mesh gradient background
+ */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass-panel-lg {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass-panel-sm {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}

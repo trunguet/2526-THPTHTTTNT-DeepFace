@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xem Nhật Ký - Admin DeepFace</title>
+    <link rel="stylesheet" href="../shared/background.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="admin-container">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <span>🎭</span>
+            <span>DeepFace</span>
+          </div>
+        </div>
+        <nav class="sidebar-nav">
+          <li><a href="./index.html">Dashboard</a></li>
+          <li><a href="./add_employee.html">➕ Thêm Nhân Viên</a></li>
+          <li><a href="./manage_list.html">👥 Quản Lý Danh Sách</a></li>
+          <li><a href="./view_logs.html" class="active">📋 Xem Nhật Ký</a></li>
+          <li><a href="./settings.html">⚙️ Cài Đặt</a></li>
+          <li><a href="#logout" onclick="handleLogout()">🚪 Đăng Xuất</a></li>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <header class="header">
+          <h1 class="header-title">Nhật Ký Truy Cập</h1>
+          <button class="btn btn-primary" id="refresh-btn">
+            <span>↻</span>
+            <span>Làm Mới</span>
+          </button>
+        </header>
+
+        <div class="content-area">
+          <!-- Filters -->
+          <div class="card">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px">
+              <div>
+                <label style="display: block; margin-bottom: 8px; color: #e0e7ff; font-weight: 500">Từ Ngày</label>
+                <input type="date" id="filter-date-from" style="width: 100%; padding: 10px 15px; background: rgba(255, 255, 255, 0.05); 
+                  border: 1px solid rgba(124, 196, 237, 0.3); border-radius: 8px; color: #fff" />
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 8px; color: #e0e7ff; font-weight: 500">Đến Ngày</label>
+                <input type="date" id="filter-date-to" style="width: 100%; padding: 10px 15px; background: rgba(255, 255, 255, 0.05); 
+                  border: 1px solid rgba(124, 196, 237, 0.3); border-radius: 8px; color: #fff" />
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 8px; color: #e0e7ff; font-weight: 500">Trạng Thái</label>
+                <select id="filter-type" style="width: 100%; padding: 10px 15px; background: rgba(255, 255, 255, 0.05); 
+                  border: 1px solid rgba(124, 196, 237, 0.3); border-radius: 8px; color: #fff">
+                  <option value="all">-- Tất Cả --</option>
+                  <option value="allowed">Cho Phép</option>
+                  <option value="denied">Từ Chối</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alerts Section -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">⚠️ Cảnh Báo Người Lạ</h2>
+            </div>
+            <div id="alerts-section" style="min-height: 100px">
+              <p style="color: #a0aec0; text-align: center">Đang tải cảnh báo...</p>
+            </div>
+          </div>
+
+          <!-- Access Logs Table -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">📋 Nhật Ký Ra Vào</h2>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Nhân Viên</th>
+                    <th>Mã NV</th>
+                    <th>Camera</th>
+                    <th>Thời Gian</th>
+                    <th>Trạng Thái</th>
+                    <th>Hành Động</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                  <tr>
+                    <td colspan="7" style="text-align: center; color: #a0aec0">Đang tải dữ liệu...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <script src="../shared/background.js"></script>
+    <!-- Module Scripts -->
+    <script src="./view_logs.js"></script>
+    <script>
+      function handleLogout() {
+        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+          localStorage.removeItem('auth_token');
+          window.location.href = '/login.html';
+        }
+      }
+    </script>
+  </body>
+</html>

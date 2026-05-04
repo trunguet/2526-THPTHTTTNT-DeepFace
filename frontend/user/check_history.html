@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lịch Sử Check-in - DeepFace</title>
+    <link rel="stylesheet" href="../shared/background.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="user-container">
+      <!-- Top Navigation -->
+      <nav class="top-nav">
+        <div class="nav-brand">
+          <span>🎭</span>
+          <span>DeepFace</span>
+          <span style="color: #a0aec0; font-weight: 400; margin-left: 10px">- Lịch Sử Check-in</span>
+        </div>
+        <div class="nav-user-info">
+          <a href="./index.html" style="color: #7cc4ed; text-decoration: none; font-weight: 600">← Quay Lại</a>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <div class="content" style="max-width: 1200px; margin: 0 auto">
+        <div class="card">
+          <h2 class="card-title">📋 Lịch Sử Check-in Check-out</h2>
+
+          <!-- Statistics -->
+          <div id="stats-container" class="stats-grid"></div>
+
+          <!-- Filters -->
+          <div class="filter-group">
+            <input type="date" id="date-filter" placeholder="Lọc theo ngày" />
+            <input type="month" id="month-filter" placeholder="Lọc theo tháng" />
+            <button class="btn btn-primary" id="refresh-btn">
+              <span>↻</span>
+              <span>Làm Mới</span>
+            </button>
+            <button class="btn btn-secondary" id="export-btn">
+              <span>📥</span>
+              <span>Tải CSV</span>
+            </button>
+          </div>
+
+          <!-- History Table -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Ngày</th>
+                  <th>Giờ</th>
+                  <th>Loại</th>
+                  <th>Vị Trí Camera</th>
+                  <th>Trạng Thái</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: #a0aec0">Đang tải dữ liệu...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Information -->
+          <div style="background: rgba(124, 196, 237, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 3px solid #7cc4ed">
+            <h4 style="color: #7cc4ed; margin-bottom: 10px">ℹ️ Thông Tin:</h4>
+            <ul style="color: #cbd5e1; font-size: 13px; line-height: 1.8; padding-left: 20px">
+              <li>Bảng lịch sử hiển thị tất cả các lần check-in/check-out của bạn</li>
+              <li>Bạn có thể lọc lịch sử theo ngày hoặc tháng</li>
+              <li>Nhấn "Tải CSV" để tải xuống lịch sử dưới dạng file Excel</li>
+              <li>Dữ liệu được cập nhật liên tục từ hệ thống nhận diện khuôn mặt</li>
+              <li>Bất kỳ vấn đề gì, vui lòng liên hệ với quản trị viên</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card" style="margin-top: 20px">
+          <h2 class="card-title">📊 Thống Kê</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px">
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); text-align: center">
+              <div style="color: #a0aec0; font-size: 12px; text-transform: uppercase; margin-bottom: 10px">Tổng Số Lần Check-in</div>
+              <div style="color: #10b981; font-size: 32px; font-weight: 700" id="total-checkin">--</div>
+            </div>
+            <div style="background: rgba(124, 196, 237, 0.1); padding: 20px; border-radius: 8px; border: 1px solid rgba(124, 196, 237, 0.3); text-align: center">
+              <div style="color: #a0aec0; font-size: 12px; text-transform: uppercase; margin-bottom: 10px">Tổng Số Lần Check-out</div>
+              <div style="color: #7cc4ed; font-size: 32px; font-weight: 700" id="total-checkout">--</div>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); text-align: center">
+              <div style="color: #a0aec0; font-size: 12px; text-transform: uppercase; margin-bottom: 10px">Tổng Cộng</div>
+              <div style="color: #fbbf24; font-size: 32px; font-weight: 700" id="total-records">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <script src="../shared/background.js"></script>
+    <!-- Module Scripts -->
+    <script src="./check_history.js"></script>
+    <script>
+      // Custom stats calculation
+      document.addEventListener('DOMContentLoaded', () => {
+        // This will be populated by check_history.js module
+        const updateStats = () => {
+          const historyModule = window.checkHistoryModule;
+          if (historyModule && historyModule.history) {
+            const checkIns = historyModule.history.filter((r) => r.access_type === 'check_in').length;
+            const checkOuts = historyModule.history.filter((r) => r.access_type === 'check_out').length;
+            const total = historyModule.history.length;
+
+            document.getElementById('total-checkin').textContent = checkIns;
+            document.getElementById('total-checkout').textContent = checkOuts;
+            document.getElementById('total-records').textContent = total;
+          }
+        };
+
+        // Update every 5 seconds to reflect changes
+        setInterval(updateStats, 5000);
+      });
+    </script>
+  </body>
+</html>

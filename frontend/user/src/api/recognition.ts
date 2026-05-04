@@ -1,1 +1,0 @@
-// Dùng để gửi frame camera lên backend
