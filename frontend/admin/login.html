@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dang Nhap Admin - DeepFace</title>
+    <link rel="stylesheet" href="../shared/background.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="content-area" style="max-width: 520px; margin: 8vh auto">
+      <div class="card">
+        <div class="card-header">
+          <h1 class="card-title">Dang Nhap Admin</h1>
+        </div>
+        <form id="admin-login-form" style="display: grid; gap: 14px">
+          <input id="username" placeholder="Tai khoan" value="admin" style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff" />
+          <input id="password" type="password" placeholder="Mat khau" value="demo" style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff" />
+          <button class="btn btn-primary" type="submit">Dang Nhap Demo</button>
+          <a class="btn btn-secondary" href="./index.html">Ve Dashboard</a>
+          <div id="login-status" class="status-message" style="display: none"></div>
+        </form>
+      </div>
+    </main>
+    <script src="../shared/background.js"></script>
+    <script>
+      document.getElementById('admin-login-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        localStorage.setItem('auth_token', 'demo-admin-token');
+        document.getElementById('login-status').textContent = 'Da tao phien demo. Dang chuyen huong...';
+        document.getElementById('login-status').className = 'status-message status-success';
+        document.getElementById('login-status').style.display = 'block';
+        setTimeout(() => (window.location.href = './index.html'), 500);
+      });
+    </script>
+  </body>
+</html>

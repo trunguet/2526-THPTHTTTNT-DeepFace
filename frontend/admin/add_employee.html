@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thêm Nhân Viên - Admin DeepFace</title>
+    <link rel="stylesheet" href="../shared/background.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="admin-container">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <span>🎭</span>
+            <span>DeepFace</span>
+          </div>
+        </div>
+        <nav class="sidebar-nav">
+          <li><a href="./index.html">Dashboard</a></li>
+          <li><a href="./add_employee.html" class="active">➕ Thêm Nhân Viên</a></li>
+          <li><a href="./manage_list.html">👥 Quản Lý Danh Sách</a></li>
+          <li><a href="./view_logs.html">📋 Xem Nhật Ký</a></li>
+          <li><a href="./settings.html">⚙️ Cài Đặt</a></li>
+          <li><a href="#logout" onclick="handleLogout()">🚪 Đăng Xuất</a></li>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <header class="header">
+          <h1 class="header-title">Thêm Nhân Viên Mới</h1>
+        </header>
+
+        <div class="content-area">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">📝 Thông Tin Nhân Viên</h2>
+            </div>
+
+            <div id="status-message"></div>
+
+            <form id="add-employee-form" style="max-width: 600px">
+              <!-- Name Field -->
+              <div class="form-group">
+                <label for="employee-name">Họ và Tên *</label>
+                <input type="text" id="employee-name" name="name" placeholder="Nhập họ và tên" required />
+              </div>
+
+              <!-- Employee ID Field -->
+              <div class="form-group">
+                <label for="employee-id">Mã Nhân Viên *</label>
+                <input type="text" id="employee-id" name="id" placeholder="VD: EMP001" required />
+              </div>
+
+              <!-- Email Field -->
+              <div class="form-group">
+                <label for="employee-email">Email *</label>
+                <input type="email" id="employee-email" name="email" placeholder="example@company.com" required />
+              </div>
+
+              <!-- Department Field -->
+              <div class="form-group">
+                <label for="employee-department">Phòng Ban</label>
+                <select id="employee-department" name="department">
+                  <option value="">-- Chọn phòng ban --</option>
+                  <option value="IT">IT</option>
+                  <option value="HR">HR</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Operations">Operations</option>
+                  <option value="Sales">Sales</option>
+                </select>
+              </div>
+
+              <!-- Image Upload -->
+              <div class="form-group">
+                <label for="employee-image">Ảnh Khuôn Mặt *</label>
+                <input type="file" id="employee-image" name="image" accept="image/*" required />
+                <small style="color: #a0aec0; display: block; margin-top: 5px">Định dạng: JPG, PNG. Dung lượng tối đa: 5MB</small>
+              </div>
+
+              <!-- Image Preview -->
+              <div style="margin: 20px 0">
+                <img
+                  id="preview-image"
+                  src=""
+                  alt="Preview"
+                  style="
+                    max-width: 200px;
+                    max-height: 200px;
+                    border-radius: 8px;
+                    border: 1px solid rgba(124, 196, 237, 0.3);
+                    display: none;
+                  "
+                />
+              </div>
+
+              <!-- Buttons -->
+              <div style="display: flex; gap: 10px; margin-top: 20px">
+                <button type="submit" class="btn btn-primary" id="submit-btn">
+                  <span>✓</span>
+                  <span>Thêm Nhân Viên</span>
+                </button>
+                <button type="reset" class="btn btn-secondary">
+                  <span>↺</span>
+                  <span>Làm Mới</span>
+                </button>
+                <a href="./manage_list.html" class="btn btn-secondary">
+                  <span>←</span>
+                  <span>Quay Lại</span>
+                </a>
+              </div>
+            </form>
+          </div>
+
+          <!-- Instructions -->
+          <div class="card" style="margin-top: 20px">
+            <div class="card-header">
+              <h2 class="card-title">ℹ️ Hướng Dẫn</h2>
+            </div>
+            <ul style="color: #cbd5e1; line-height: 1.8; padding-left: 20px">
+              <li>Ảnh khuôn mặt phải rõ ràng, có điều kiện ánh sáng tốt</li>
+              <li>Khuôn mặt nên chiếm 60-80% diện tích ảnh</li>
+              <li>Không đeo mắt kính hoặc che phủ quá mặt</li>
+              <li>Hệ thống sẽ tự động trích xuất vector và lưu vào Qdrant</li>
+              <li>Mỗi nhân viên chỉ có thể đăng ký một lần</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <script src="../shared/background.js"></script>
+    <!-- Module Scripts -->
+    <script src="../shared/api.js"></script>
+    <script src="./api.js"></script>
+    <script src="./add_employee.js"></script>
+    <script>
+      function handleLogout() {
+        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+          localStorage.removeItem('auth_token');
+          window.location.href = './login.html';
+        }
+      }
+    </script>
+  </body>
+</html>

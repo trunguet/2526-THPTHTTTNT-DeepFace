@@ -1,0 +1,6 @@
+$env:TIDB_HOST="gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
+$env:TIDB_PORT="4000"
+$env:TIDB_USER="root"
+$env:TIDB_PASSWORD="E1330izDwUdEig4C"
+$env:TIDB_DB="DBDeepFace"
+$env:TIDB_SSL="REQUIRE"
