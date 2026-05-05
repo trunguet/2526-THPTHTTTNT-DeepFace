@@ -27,14 +27,16 @@ MODEL_MAPPING = {
 
 class Detection:
     def __init__(self):
-        # Use YOLOv8 for face detection instead of Caffe model
+        # Lazily load YOLO only when bbox is not provided by the main pipeline.
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        yolo_path = os.path.join(current_dir, "../../../../models/detection/yolov8n-face.pt")
-        yolo_path = os.path.normpath(yolo_path)  # Normalize path
-        self.detector = YOLO(yolo_path)
+        self.yolo_path = os.path.normpath(os.path.join(current_dir, "../../../../models/detection/yolov8n-face.pt"))
+        self.detector = None
         self.detector_confidence = 0.6
 
     def get_bbox(self, img):
+        if self.detector is None:
+            self.detector = YOLO(self.yolo_path)
+
         # Use YOLOv8 detection
         results = self.detector(img, verbose=False)
         

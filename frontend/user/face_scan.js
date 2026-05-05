@@ -31,6 +31,10 @@ class FaceScanModule {
     if (this.captureBtn) {
       this.captureBtn.addEventListener('click', () => this.captureAndVerify());
     }
+    if (this.videoElement) {
+      this.videoElement.addEventListener('loadedmetadata', () => this.markCameraReady());
+      this.videoElement.addEventListener('playing', () => this.markCameraReady());
+    }
 
     // Request permissions on load
     this.requestCameraPermissions();
@@ -56,6 +60,8 @@ class FaceScanModule {
       stream.getTracks().forEach((track) => track.stop());
       this.showStatus('✓ Camera sẵn sàng', 'success');
     } catch (error) {
+      this.isRunning = false;
+      this.updateButtonStates();
       this.showStatus('❌ Không thể truy cập camera. Vui lòng cho phép quyền truy cập.', 'error');
       console.error('Camera permission error:', error);
     }
@@ -67,6 +73,7 @@ class FaceScanModule {
   async startWebcam() {
     try {
       if (this.mediaStream) {
+        this.markCameraReady();
         return; // Already running
       }
 
@@ -78,16 +85,18 @@ class FaceScanModule {
       this.mediaStream = stream;
       if (this.videoElement) {
         this.videoElement.srcObject = stream;
-        this.videoElement.play();
+        await this.videoElement.play();
       }
 
-      this.isRunning = true;
+      this.markCameraReady();
       this.updateButtonStates();
       this.showStatus('✓ Camera đang chạy', 'info');
 
       // Start continuous frame capture for real-time detection (optional)
       this.continuousCapture();
     } catch (error) {
+      this.isRunning = false;
+      this.updateButtonStates();
       this.showStatus('❌ Lỗi khởi động camera: ' + error.message, 'error');
       console.error('Webcam error:', error);
     }
@@ -107,6 +116,7 @@ class FaceScanModule {
     }
 
     this.isRunning = false;
+    this.isProcessing = false;
     this.updateButtonStates();
     this.showStatus('✓ Camera đã dừng', 'info');
   }
@@ -142,7 +152,7 @@ class FaceScanModule {
       console.error('Verification error:', error);
     } finally {
       this.isProcessing = false;
-      this.captureBtn.disabled = false;
+      this.updateButtonStates();
     }
   }
 
@@ -152,6 +162,9 @@ class FaceScanModule {
   captureFrame() {
     if (!this.videoElement || !this.canvasElement) {
       throw new Error('Video or canvas element not found');
+    }
+    if (!this.videoElement.videoWidth || !this.videoElement.videoHeight) {
+      throw new Error('Camera is not ready yet');
     }
 
     const context = this.canvasElement.getContext('2d');
@@ -178,22 +191,19 @@ class FaceScanModule {
    */
   async verifyFace(frameBase64) {
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/access/verify-face`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify({
-          image: frameBase64, // Base64 encoded image
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Verification request failed');
-      }
-
-      return await response.json();
+      const payload = {
+        image: frameBase64,
+      };
+      return window.DeepFaceAPI
+        ? await window.DeepFaceAPI.post('/api/access/verify-face', payload)
+        : await this.fetchJson('/api/access/verify-face', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.getAuthToken()}`,
+            },
+            body: JSON.stringify(payload),
+          });
     } catch (error) {
       throw new Error(`Face verification failed: ${error.message}`);
     }
@@ -252,15 +262,22 @@ class FaceScanModule {
    * Update button states based on running status
    */
   updateButtonStates() {
+    const cameraReady = this.isRunning && Boolean(this.mediaStream);
     if (this.startBtn) {
-      this.startBtn.disabled = this.isRunning;
+      this.startBtn.disabled = cameraReady || this.isProcessing;
     }
     if (this.stopBtn) {
-      this.stopBtn.disabled = !this.isRunning;
+      this.stopBtn.disabled = !cameraReady;
     }
     if (this.captureBtn) {
-      this.captureBtn.disabled = !this.isRunning;
+      this.captureBtn.disabled = !cameraReady || this.isProcessing;
     }
+  }
+
+  markCameraReady() {
+    if (!this.mediaStream) return;
+    this.isRunning = true;
+    this.updateButtonStates();
   }
 
   /**
@@ -272,6 +289,22 @@ class FaceScanModule {
       this.statusDisplay.className = `status-display status-${type}`;
       this.statusDisplay.style.display = 'block';
     }
+  }
+
+  async fetchJson(path, options = {}) {
+    const response = await fetch(`${this.apiBaseURL}${path}`, options);
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const detail =
+        typeof payload === 'object' ? payload.detail || payload.message : payload;
+      throw new Error(detail || `HTTP ${response.status}`);
+    }
+
+    return payload;
   }
 
   /**

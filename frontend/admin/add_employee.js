@@ -18,6 +18,7 @@ class AddEmployeeModule {
   init() {
     if (this.form) {
       this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+      this.form.addEventListener('reset', () => this.clearPreview());
     }
     if (this.imageInput) {
       this.imageInput.addEventListener('change', (e) => this.handleImageChange(e));
@@ -48,6 +49,8 @@ class AddEmployeeModule {
         }
       };
       reader.readAsDataURL(file);
+    } else {
+      this.clearPreview();
     }
   }
 
@@ -68,7 +71,7 @@ class AddEmployeeModule {
       return;
     }
 
-    this.submitBtn.disabled = true;
+    this.setSubmitLoading(true);
     this.showMessage('Đang xử lý...', 'info');
 
     try {
@@ -76,7 +79,7 @@ class AddEmployeeModule {
       const upload = await this.uploadImageToMinio(imageFile, employeeId);
 
       // Step 2: Create employee record in database
-      const employee = await this.createEmployeeRecord({
+      await this.createEmployeeRecord({
         full_name: fullName,
         employee_id: employeeId,
         email: email,
@@ -85,14 +88,9 @@ class AddEmployeeModule {
         image_object_key: upload.image_object_key,
       });
 
-      // Step 3: Trigger vector embedding extraction
-      await this.triggerVectorExtraction(employee.id);
-
-      this.showMessage('✓ Thêm nhân viên thành công!', 'success');
+      this.showMessage('✓ Thêm nhân viên thành công! Hệ thống đang tạo vector khuôn mặt.', 'success');
       this.form.reset();
-      if (this.previewImage) {
-        this.previewImage.style.display = 'none';
-      }
+      this.clearPreview();
 
       // Redirect after 2 seconds
       setTimeout(() => {
@@ -102,7 +100,7 @@ class AddEmployeeModule {
       console.error('Error:', error);
       this.showMessage(`❌ Lỗi: ${error.message}`, 'error');
     } finally {
-      this.submitBtn.disabled = false;
+      this.setSubmitLoading(false);
     }
   }
 
@@ -115,16 +113,12 @@ class AddEmployeeModule {
       formData.append('file', file);
       formData.append('employee_id', employeeId);
 
-      const response = await fetch(`${this.apiBaseURL}/api/employees/upload-image`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload image to MinIO');
-      }
-
-      const data = await response.json();
+      const data = window.DeepFaceAPI
+        ? await window.DeepFaceAPI.post('/api/employees/upload-image', formData)
+        : await this.fetchJson('/api/employees/upload-image', {
+            method: 'POST',
+            body: formData,
+          });
       return {
         image_url: data.image_url || data.url,
         image_object_key: data.image_object_key || '',
@@ -139,47 +133,18 @@ class AddEmployeeModule {
    */
   async createEmployeeRecord(employeeData) {
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify(employeeData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create employee record');
-      }
-
-      return await response.json();
+      return window.DeepFaceAPI
+        ? await window.DeepFaceAPI.post('/api/employees', employeeData)
+        : await this.fetchJson('/api/employees', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.getAuthToken()}`,
+            },
+            body: JSON.stringify(employeeData),
+          });
     } catch (error) {
       throw new Error(`Employee creation failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Trigger vector embedding extraction and Qdrant indexing
-   */
-  async triggerVectorExtraction(employeeId) {
-    try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees/${employeeId}/extract-embedding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to extract embedding');
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.warn(`Embedding extraction warning: ${error.message}`);
-      // Non-critical error, continue
     }
   }
 
@@ -188,6 +153,34 @@ class AddEmployeeModule {
    */
   getAuthToken() {
     return localStorage.getItem('auth_token') || '';
+  }
+
+  async fetchJson(path, options = {}) {
+    const response = await fetch(`${this.apiBaseURL}${path}`, options);
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const detail =
+        typeof payload === 'object' ? payload.detail || payload.message : payload;
+      throw new Error(detail || `HTTP ${response.status}`);
+    }
+
+    return payload;
+  }
+
+  setSubmitLoading(isLoading) {
+    if (!this.submitBtn) return;
+    this.submitBtn.disabled = isLoading;
+    this.submitBtn.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+  }
+
+  clearPreview() {
+    if (!this.previewImage) return;
+    this.previewImage.removeAttribute('src');
+    this.previewImage.style.display = 'none';
   }
 
   /**

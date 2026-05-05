@@ -3,20 +3,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.ai import build_embedding, decode_base64_image, qdrant_score, validate_image
-from app.config import MATCH_THRESHOLD
+from app.ai import decode_base64_image, validate_image, verify_liveness_and_embedding
 from app.db import AttendanceLog, Employee, get_db
 from app.schemas import VerifyFaceRequest
 from app.storage import save_bytes
-from app.vector_store import search_face
 
 
 router = APIRouter(prefix="/api/access", tags=["access"])
-
-
-def _top_payload(result: Any) -> dict[str, Any]:
-    payload = getattr(result, "payload", None)
-    return payload if isinstance(payload, dict) else {}
 
 
 @router.post("/verify-face")
@@ -28,14 +21,16 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}")
 
     snapshot_key, snapshot_url = save_bytes("audit/unknown", image_bytes)
-    vector = build_embedding(image_bytes)
+    try:
+        result = verify_liveness_and_embedding(image_bytes)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Face pipeline failed: {exc}")
 
-    results = search_face(vector, limit=1)
-    top = results[0] if results else None
-    score = qdrant_score(top) if top else 0.0
-    payload = _top_payload(top)
+    match = result.match
+    score = match.score if match else 0.0
+    payload = match.payload if match else {}
 
-    if top is not None and score >= MATCH_THRESHOLD:
+    if result.status == "accepted" and match is not None:
         employee = None
         db_id = payload.get("db_id")
         if db_id is not None:
@@ -56,19 +51,34 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
             "confidence": score,
             "audit_object": snapshot_key,
             "image_url": snapshot_url,
+            "reason": result.reason,
         }
 
     log = AttendanceLog(
         employee_id=None,
-        status="STRANGER",
+        status="STRANGER" if result.reason == "no_match" else "FAILED",
         minio_snapshot_path=snapshot_key,
     )
     db.add(log)
     db.commit()
+    message = {
+        "spoof": "Liveness check failed",
+        "no_face": "No face detected",
+        "no_match": "Face did not match any employee",
+    }.get(result.reason, "Face verification failed")
 
     return {
-        "status": "stranger",
+        "status": "stranger" if result.reason == "no_match" else "denied",
+        "reason": result.reason,
+        "message": message,
         "confidence": score,
         "audit_object": snapshot_key,
         "image_url": snapshot_url,
+        "anti_spoof": {
+            "real_score": result.anti_spoof.real_score,
+            "spoof_score": result.anti_spoof.spoof_score,
+            "confidence": result.anti_spoof.confidence,
+        }
+        if result.anti_spoof
+        else None,
     }

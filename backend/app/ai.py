@@ -1,12 +1,11 @@
 import base64
 import io
-import math
-from typing import Any
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 
-from app.config import VECTOR_SIZE
+from app.ml.matcher import qdrant_score
+from app.ml.pipeline import VerificationResult, get_face_pipeline
 
 
 def decode_base64_image(data_url: str) -> bytes:
@@ -20,28 +19,10 @@ def validate_image(image_bytes: bytes) -> None:
         image.verify()
 
 
-def _vector_dimensions(size: int) -> tuple[int, int]:
-    width = int(math.sqrt(size))
-    while width > 1 and size % width != 0:
-        width -= 1
-    return width, size // width
-
-
 def build_embedding(image_bytes: bytes) -> list[float]:
-    with Image.open(io.BytesIO(image_bytes)) as image:
-        image = ImageOps.exif_transpose(image)
-        image = image.convert("L")
-        width, height = _vector_dimensions(VECTOR_SIZE)
-        image = ImageOps.fit(image, (width, height), method=Image.Resampling.BILINEAR)
-        vector = np.asarray(image, dtype=np.float32).reshape(-1)
-
-    vector = vector / 255.0
-    vector = vector - float(vector.mean())
-    norm = float(np.linalg.norm(vector))
-    if norm == 0:
-        return vector.tolist()
-    return (vector / norm).astype(np.float32).tolist()
+    result = get_face_pipeline().embedding_for_enroll(image_bytes)
+    return result.embedding.astype(np.float32).tolist()
 
 
-def qdrant_score(result: Any) -> float:
-    return float(getattr(result, "score", 0.0) or 0.0)
+def verify_liveness_and_embedding(image_bytes: bytes) -> VerificationResult:
+    return get_face_pipeline().verify(image_bytes)

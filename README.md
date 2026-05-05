@@ -65,7 +65,9 @@ The backend now includes an end-to-end MVP for the face access-control use case:
 - MinIO for employee images and verification snapshots.
 - Qdrant for face/image vectors.
 - Redis queue plus `worker` service for background embedding jobs.
-- Lightweight image embedding based on Pillow/Numpy so the project can run quickly in Docker.
+- Production face pipeline using YOLOv8-Face detection, 5-point alignment,
+  MiniFASNet anti-spoofing, ArcFace 512-dimensional embeddings, and Qdrant
+  cosine matching.
 
 Core flow:
 
@@ -92,4 +94,9 @@ Important API endpoints:
 
 ## Notes
 
-This is a functional Docker MVP for the course project. Runtime database settings can be overridden from `.env`, but a fresh clone works with the local MySQL container by default. The Docker path currently uses a lightweight 512-dimensional image embedding so the system can run quickly. The YOLOv8-Face, MiniFASNet, and ArcFace files are present in the repository, but they still need to be packaged into the backend image with their heavy dependencies before the production pipeline is fully active in Docker.
+This is a functional Docker MVP for the course project. Runtime database
+settings can be overridden from `.env`, but a fresh clone works with the local
+MySQL container by default. The backend image packages the local YOLOv8-Face,
+MiniFASNet, and ArcFace weights. After switching model pipelines or changing
+thresholds, re-run employee embedding extraction so Qdrant contains vectors
+from the same ArcFace pipeline used during verification.

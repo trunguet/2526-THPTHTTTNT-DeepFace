@@ -1,6 +1,12 @@
 .venv/
 .env
+.deepface/
 __pycache__/
 *.pyc
 
 database/qdrant_data/
+
+models/extraction/arcface_weights.h5
+*.h5
+*.pth
+*.pt
