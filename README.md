@@ -13,6 +13,11 @@ From the repository root:
 docker compose up --build -d
 ```
 
+The default Docker setup is self-contained and uses the local `mysql` service in
+`docker-compose.yml`. A `.env` file is optional. If you want to use TiDB Cloud
+instead, copy `.env.example` to `.env` and set `DATABASE_URL` plus
+`DATABASE_SSL=true`.
+
 Open:
 
 - Admin UI: http://localhost:3001
@@ -53,7 +58,8 @@ Detailed frontend review and next-step checklist: [docs/frontend-review.md](docs
 The backend now includes an end-to-end MVP for the face access-control use case:
 
 - FastAPI REST API.
-- TiDB Cloud for employees and access logs.
+- MySQL by default for employees and access logs, with optional TiDB Cloud via
+  `.env`.
 - MinIO for employee images and verification snapshots.
 - Qdrant for face/image vectors.
 - Redis queue plus `worker` service for background embedding jobs.
@@ -84,4 +90,4 @@ Important API endpoints:
 
 ## Notes
 
-This is a functional Docker MVP for the course project. Runtime database settings are loaded from `.env`; the current setup targets TiDB Cloud with SSL enabled. The Docker path currently uses a lightweight 512-dimensional image embedding so the system can run quickly. The YOLOv8-Face, MiniFASNet, and ArcFace files are present in the repository, but they still need to be packaged into the backend image with their heavy dependencies before the production pipeline is fully active in Docker.
+This is a functional Docker MVP for the course project. Runtime database settings can be overridden from `.env`, but a fresh clone works with the local MySQL container by default. The Docker path currently uses a lightweight 512-dimensional image embedding so the system can run quickly. The YOLOv8-Face, MiniFASNet, and ArcFace files are present in the repository, but they still need to be packaged into the backend image with their heavy dependencies before the production pipeline is fully active in Docker.

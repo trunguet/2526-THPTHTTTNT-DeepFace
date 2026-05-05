@@ -7,8 +7,8 @@ services:
     ports:
       - "18000:8000"
     environment:
-      DATABASE_URL: mysql+pymysql://${TIDB_USER}:${TIDB_PASSWORD}@${TIDB_HOST}:${TIDB_PORT}/${TIDB_DATABASE}?charset=utf8mb4
-      DATABASE_SSL: ${DATABASE_SSL:-true}
+      DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://${TIDB_USER:-root}:${TIDB_PASSWORD:-deepface_root_password}@${TIDB_HOST:-mysql}:${TIDB_PORT:-3306}/${TIDB_DATABASE:-deepface}?charset=utf8mb4}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: admin
@@ -19,6 +19,7 @@ services:
       MATCH_THRESHOLD: 0.45
       PUBLIC_API_BASE_URL: http://localhost:18000
     depends_on:
+      - mysql
       - redis
       - minio
       - qdrant
@@ -31,8 +32,8 @@ services:
     container_name: deepface_worker
     command: ["python", "-m", "app.worker"]
     environment:
-      DATABASE_URL: mysql+pymysql://${TIDB_USER}:${TIDB_PASSWORD}@${TIDB_HOST}:${TIDB_PORT}/${TIDB_DATABASE}?charset=utf8mb4
-      DATABASE_SSL: ${DATABASE_SSL:-true}
+      DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://${TIDB_USER:-root}:${TIDB_PASSWORD:-deepface_root_password}@${TIDB_HOST:-mysql}:${TIDB_PORT:-3306}/${TIDB_DATABASE:-deepface}?charset=utf8mb4}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: admin
@@ -42,6 +43,7 @@ services:
       VECTOR_SIZE: 512
       PUBLIC_API_BASE_URL: http://localhost:18000
     depends_on:
+      - mysql
       - redis
       - minio
       - qdrant
@@ -66,6 +68,18 @@ services:
       - "3002:80"
     depends_on:
       - backend
+
+  mysql:
+    image: mysql:8.4
+    container_name: deepface_mysql
+    ports:
+      - "13306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-deepface_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-deepface}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
@@ -98,6 +112,7 @@ services:
       - qdrant_data:/qdrant/storage
 
 volumes:
+  mysql_data:
   minio_data:
   qdrant_data:
   redis_data:
