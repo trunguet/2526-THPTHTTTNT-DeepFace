@@ -6,6 +6,7 @@
     <title>Admin Dashboard - DeepFace</title>
     <link rel="stylesheet" href="../shared/background.css" />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="./auth.js"></script>
   </head>
   <body>
     <div class="admin-container">
@@ -35,7 +36,7 @@
             <div class="user-profile">
               <span>👤</span>
               <div>
-                <div style="color: #fff; font-weight: 600; font-size: 14px">Admin User</div>
+                <div id="admin-display-name" style="color: #fff; font-weight: 600; font-size: 14px">Admin User</div>
                 <div style="color: #a0aec0; font-size: 12px">Quản trị viên</div>
               </div>
             </div>
@@ -161,12 +162,15 @@
 
       function handleLogout() {
         if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-          localStorage.removeItem('auth_token');
-          window.location.href = './login.html';
+          window.DeepFaceAdminAuth?.logout?.();
         }
       }
 
       document.addEventListener('DOMContentLoaded', () => {
+        const displayName = document.getElementById('admin-display-name');
+        if (displayName) {
+          displayName.textContent = window.DeepFaceAdminAuth?.currentUser?.() || 'Admin User';
+        }
         loadDashboardStats();
       });
     </script>

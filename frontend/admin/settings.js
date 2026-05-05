@@ -4,7 +4,6 @@ class AdminSettingsModule {
     this.saveBtn = document.getElementById('save-api-url');
     this.testBtn = document.getElementById('test-api-url');
     this.resetBtn = document.getElementById('reset-api-url');
-    this.demoBtn = document.getElementById('create-demo-session');
     this.status = document.getElementById('settings-status');
     this.init();
   }
@@ -14,7 +13,6 @@ class AdminSettingsModule {
     this.saveBtn?.addEventListener('click', () => this.save());
     this.testBtn?.addEventListener('click', () => this.test());
     this.resetBtn?.addEventListener('click', () => this.reset());
-    this.demoBtn?.addEventListener('click', () => this.createDemoSession());
   }
 
   save() {
@@ -37,11 +35,6 @@ class AdminSettingsModule {
     } catch (error) {
       this.show(`Khong ket noi duoc backend: ${error.message}`, 'error');
     }
-  }
-
-  createDemoSession() {
-    localStorage.setItem('auth_token', 'demo-admin-token');
-    this.show('Da tao token demo cho admin.', 'success');
   }
 
   show(message, type) {

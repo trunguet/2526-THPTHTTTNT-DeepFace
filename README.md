@@ -20,6 +20,7 @@ instead, copy `.env.example` to `.env` and set `DATABASE_URL` plus
 
 Open:
 
+- Home: http://localhost:3000
 - Admin UI: http://localhost:3001
 - User UI: http://localhost:3002
 - Backend health: http://localhost:18000/health
@@ -48,7 +49,8 @@ docker compose down -v
 
 This repository currently includes improved static frontends for:
 
-- Admin: dashboard, employee list, add employee form, access logs, settings, demo login.
+- Home: role selector for Admin and Nhân Viên.
+- Admin: local account registration/login, dashboard, employee list, add employee form, access logs, settings.
 - User: camera scan, access history, CSV export, demo login.
 
 Detailed frontend review and next-step checklist: [docs/frontend-review.md](docs/frontend-review.md).

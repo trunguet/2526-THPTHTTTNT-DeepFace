@@ -49,6 +49,17 @@ services:
       - qdrant
     restart: unless-stopped
 
+  frontend-home:
+    build:
+      context: .
+      dockerfile: frontend/home/Dockerfile
+    container_name: deepface_frontend_home
+    ports:
+      - "3000:80"
+    depends_on:
+      - frontend-admin
+      - frontend-user
+
   frontend-admin:
     build:
       context: .

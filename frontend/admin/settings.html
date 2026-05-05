@@ -6,6 +6,7 @@
     <title>Cai Dat - Admin DeepFace</title>
     <link rel="stylesheet" href="../shared/background.css" />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="./auth.js"></script>
   </head>
   <body>
     <div class="admin-container">
@@ -21,7 +22,7 @@
           <li><a href="./manage_list.html">Quan Ly Danh Sach</a></li>
           <li><a href="./view_logs.html">Xem Nhat Ky</a></li>
           <li><a href="./settings.html" class="active">Cai Dat</a></li>
-          <li><a href="./login.html">Dang Nhap</a></li>
+          <li><a href="#logout" onclick="window.DeepFaceAdminAuth?.logout?.()">Dang Xuat</a></li>
         </nav>
       </aside>
 
@@ -52,16 +53,6 @@
               </div>
               <div id="settings-status" class="status-message" style="display: none"></div>
             </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">Phien Demo</h2>
-            </div>
-            <p style="color: #cbd5e1; margin-bottom: 16px">
-              Backend hien tai chua co luong dang nhap that. Nut nay tao token demo de frontend gui Authorization header khi test API.
-            </p>
-            <button class="btn btn-primary" id="create-demo-session">Tao Token Demo</button>
           </div>
         </div>
       </div>

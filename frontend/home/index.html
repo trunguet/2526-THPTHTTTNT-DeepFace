@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeepFace</title>
+    <link rel="stylesheet" href="./shared/background.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="home-shell">
+      <section class="hero-panel" aria-labelledby="home-title">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="brand-eye"></span>
+          <span class="brand-scan"></span>
+        </div>
+        <p class="eyebrow">Hệ thống kiểm soát truy cập</p>
+        <h1 id="home-title">DeepFace</h1>
+        <p class="subtitle">Chọn vai trò để tiếp tục vào khu vực phù hợp.</p>
+
+        <div class="role-actions" aria-label="Chọn vai trò">
+          <a class="role-card role-admin" href="http://localhost:3001/login.html" data-target-port="3001" data-target-path="/login.html">
+            <span class="role-icon" aria-hidden="true">A</span>
+            <span class="role-content">
+              <span class="role-title">ADMIN</span>
+              <span class="role-desc">Quản lý nhân viên, nhật ký và cấu hình hệ thống</span>
+            </span>
+            <span class="role-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="role-card role-user" href="http://localhost:3002" data-target-port="3002">
+            <span class="role-icon" aria-hidden="true">N</span>
+            <span class="role-content">
+              <span class="role-title">Nhân Viên</span>
+              <span class="role-desc">Quét khuôn mặt và xem lịch sử ra vào</span>
+            </span>
+            <span class="role-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <script src="./shared/background.js"></script>
+    <script src="./home.js"></script>
+  </body>
+</html>
