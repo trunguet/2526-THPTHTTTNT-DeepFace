@@ -16,21 +16,20 @@ def process_embedding_job(db: Session, employee_id: int) -> None:
         return
 
     try:
-        image_bytes = read_bytes(employee.image_object_key)
+        image_bytes = read_bytes(employee.minio_image_path)
         vector = build_embedding(image_bytes)
         upsert_employee_vector(
             employee.id,
             vector,
             {
                 "db_id": employee.id,
-                "employee_id": employee.employee_id,
+                "employee_id": str(employee.id),
                 "full_name": employee.full_name,
-                "department": employee.department,
             },
         )
-        employee.embedding_status = "indexed"
+        employee.is_vectorized = True
     except Exception as exc:
-        employee.embedding_status = "failed"
+        employee.is_vectorized = False
         print(f"Failed to index employee {employee_id}: {exc}", flush=True)
     finally:
         employee.updated_at = now_utc()

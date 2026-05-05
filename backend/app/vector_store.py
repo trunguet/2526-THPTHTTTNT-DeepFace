@@ -1,7 +1,7 @@
 import time
 
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, PointStruct, VectorParams
+from qdrant_client.http.models import Distance, PointIdsList, PointStruct, VectorParams
 
 from app.config import QDRANT_COLLECTION, QDRANT_URL, VECTOR_SIZE
 
@@ -38,14 +38,26 @@ def upsert_employee_vector(employee_id: int, vector: list[float], payload: dict)
 
 def delete_employee_vector(employee_id: int) -> None:
     client = get_qdrant_client()
-    client.delete(collection_name=QDRANT_COLLECTION, points_selector=[employee_id])
+    client.delete(
+        collection_name=QDRANT_COLLECTION,
+        points_selector=PointIdsList(points=[employee_id]),
+    )
 
 
 def search_face(vector: list[float], limit: int = 1):
     client = get_qdrant_client()
-    return client.search(
+    if hasattr(client, "search"):
+        return client.search(
+            collection_name=QDRANT_COLLECTION,
+            query_vector=vector,
+            limit=limit,
+            with_payload=True,
+        )
+
+    result = client.query_points(
         collection_name=QDRANT_COLLECTION,
-        query_vector=vector,
+        query=vector,
         limit=limit,
         with_payload=True,
     )
+    return result.points

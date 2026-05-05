@@ -1,102 +1,74 @@
-import base64
-import os
-import sys
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
+from app.ai import build_embedding, decode_base64_image, qdrant_score, validate_image
+from app.config import MATCH_THRESHOLD
+from app.db import AttendanceLog, Employee, get_db
+from app.schemas import VerifyFaceRequest
+from app.storage import save_bytes
+from app.vector_store import search_face
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-if PROJECT_ROOT not in sys.path:
-	sys.path.insert(0, PROJECT_ROOT)
-
-from worker.tasks.pipeline import build_default_components, run_pipeline
 
 router = APIRouter(prefix="/api/access", tags=["access"])
 
 
-class VerifyFaceRequest(BaseModel):
-	image: str
-	camera_id: Optional[str] = None
-	client_id: Optional[str] = None
-
-
-_components = None
-
-
-def _get_components():
-	global _components
-	if _components is None:
-		_components = build_default_components()
-	return _components
-
-
-def _decode_image(data_url: str) -> bytes:
-	if "," in data_url:
-		_, payload = data_url.split(",", 1)
-	else:
-		payload = data_url
-
-	try:
-		return base64.b64decode(payload)
-	except Exception as exc:
-		raise HTTPException(status_code=400, detail=f"Invalid base64 image: {exc}")
-
-
-def _extract_employee_name(payload: Optional[Dict[str, Any]]) -> Optional[str]:
-	if not payload:
-		return None
-	for key in ("full_name", "employee_name", "name"):
-		if key in payload:
-			return str(payload[key])
-	return None
+def _top_payload(result: Any) -> dict[str, Any]:
+    payload = getattr(result, "payload", None)
+    return payload if isinstance(payload, dict) else {}
 
 
 @router.post("/verify-face")
-def verify_face(request: VerifyFaceRequest):
-	detector, anti_spoof, embedder, matcher, storage = _get_components()
+def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+    try:
+        image_bytes = decode_base64_image(request.image)
+        validate_image(image_bytes)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {exc}")
 
-	image_bytes = _decode_image(request.image)
+    snapshot_key, snapshot_url = save_bytes("audit/unknown", image_bytes)
+    vector = build_embedding(image_bytes)
 
-	camera_id = request.camera_id or "unknown"
-	client_id = request.client_id or "unknown"
+    results = search_face(vector, limit=1)
+    top = results[0] if results else None
+    score = qdrant_score(top) if top else 0.0
+    payload = _top_payload(top)
 
-	result = run_pipeline(
-		frame=image_bytes,
-		camera_id=camera_id,
-		client_id=client_id,
-		detector=detector,
-		anti_spoof=anti_spoof,
-		embedder=embedder,
-		matcher=matcher,
-		storage=storage,
-	)
+    if top is not None and score >= MATCH_THRESHOLD:
+        employee = None
+        db_id = payload.get("db_id")
+        if db_id is not None:
+            employee = db.query(Employee).filter(Employee.id == int(db_id)).first()
 
-	if result.status == "accepted":
-		return {
-			"status": "allowed",
-			"employee_id": result.employee_id,
-			"employee_name": _extract_employee_name(result.payload),
-			"confidence": float(result.similarity or 0.0),
-			"audit_object": result.audit_object,
-		}
+        log = AttendanceLog(
+            employee_id=employee.id if employee else None,
+            status="SUCCESS",
+            minio_snapshot_path=snapshot_key,
+        )
+        db.add(log)
+        db.commit()
 
-	if result.reason == "no_match":
-		return {
-			"status": "stranger",
-			"confidence": float(result.similarity or 0.0),
-			"audit_object": result.audit_object,
-		}
+        return {
+            "status": "allowed",
+            "employee_id": str(employee.id) if employee else None,
+            "employee_name": employee.full_name if employee else str(payload.get("full_name") or ""),
+            "confidence": score,
+            "audit_object": snapshot_key,
+            "image_url": snapshot_url,
+        }
 
-	message = "Face verification failed"
-	if result.reason == "spoof":
-		message = "Spoof detected"
-	elif result.reason == "no_face":
-		message = "No face detected"
+    log = AttendanceLog(
+        employee_id=None,
+        status="STRANGER",
+        minio_snapshot_path=snapshot_key,
+    )
+    db.add(log)
+    db.commit()
 
-	return {
-		"status": "denied",
-		"message": message,
-		"audit_object": result.audit_object,
-	}
+    return {
+        "status": "stranger",
+        "confidence": score,
+        "audit_object": snapshot_key,
+        "image_url": snapshot_url,
+    }

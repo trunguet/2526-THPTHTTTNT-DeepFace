@@ -7,15 +7,18 @@ services:
     ports:
       - "18000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://deepface:deepface_password@postgres:5432/deepface
+      DATABASE_URL: mysql+pymysql://${TIDB_USER}:${TIDB_PASSWORD}@${TIDB_HOST}:${TIDB_PORT}/${TIDB_DATABASE}?charset=utf8mb4
+      DATABASE_SSL: ${DATABASE_SSL:-true}
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: admin
       MINIO_SECRET_KEY: password123
       QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: face_embeddings
+      VECTOR_SIZE: 512
+      MATCH_THRESHOLD: 0.45
       PUBLIC_API_BASE_URL: http://localhost:18000
     depends_on:
-      - postgres
       - redis
       - minio
       - qdrant
@@ -28,15 +31,17 @@ services:
     container_name: deepface_worker
     command: ["python", "-m", "app.worker"]
     environment:
-      DATABASE_URL: postgresql+psycopg://deepface:deepface_password@postgres:5432/deepface
+      DATABASE_URL: mysql+pymysql://${TIDB_USER}:${TIDB_PASSWORD}@${TIDB_HOST}:${TIDB_PORT}/${TIDB_DATABASE}?charset=utf8mb4
+      DATABASE_SSL: ${DATABASE_SSL:-true}
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: admin
       MINIO_SECRET_KEY: password123
       QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: face_embeddings
+      VECTOR_SIZE: 512
       PUBLIC_API_BASE_URL: http://localhost:18000
     depends_on:
-      - postgres
       - redis
       - minio
       - qdrant
@@ -75,18 +80,6 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: deepface_postgres
-    ports:
-      - "15432:5432"
-    environment:
-      POSTGRES_DB: deepface
-      POSTGRES_USER: deepface
-      POSTGRES_PASSWORD: deepface_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   redis:
     image: redis:7-alpine
     container_name: deepface_redis
@@ -107,5 +100,4 @@ services:
 volumes:
   minio_data:
   qdrant_data:
-  postgres_data:
   redis_data:

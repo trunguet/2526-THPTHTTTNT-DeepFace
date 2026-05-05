@@ -43,7 +43,7 @@ class FaceScanModule {
       process.env.REACT_APP_API_BASE_URL
         ? process.env.REACT_APP_API_BASE_URL
         : null;
-    return envBaseUrl || 'http://localhost:8000';
+    return envBaseUrl || window.DeepFaceAPI?.getBaseURL?.() || 'http://localhost:18000';
   }
 
   /**

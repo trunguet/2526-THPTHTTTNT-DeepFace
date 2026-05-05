@@ -74,6 +74,44 @@
       </div>
     </div>
 
+    <!-- Edit Employee Modal -->
+    <div id="edit-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">Sửa Nhân Viên</div>
+        <form id="edit-employee-form">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="edit-employee-name">Họ và Tên *</label>
+              <input type="text" id="edit-employee-name" required />
+            </div>
+            <div class="form-group">
+              <label for="edit-employee-code">Mã Nhân Viên</label>
+              <input type="text" id="edit-employee-code" disabled />
+            </div>
+            <div class="form-group">
+              <label for="edit-employee-email">Email</label>
+              <input type="email" id="edit-employee-email" />
+            </div>
+            <div class="form-group">
+              <label for="edit-employee-department">Phòng Ban</label>
+              <select id="edit-employee-department">
+                <option value="">-- Chọn phòng ban --</option>
+                <option value="IT">IT</option>
+                <option value="HR">HR</option>
+                <option value="Finance">Finance</option>
+                <option value="Operations">Operations</option>
+                <option value="Sales">Sales</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancel-edit">Hủy</button>
+            <button type="submit" class="btn btn-primary" id="confirm-edit">Lưu</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Delete Confirmation Modal -->
     <div id="delete-modal" class="modal">
       <div class="modal-content">

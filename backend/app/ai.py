@@ -1,5 +1,6 @@
 import base64
 import io
+import math
 from typing import Any
 
 import numpy as np
@@ -19,12 +20,19 @@ def validate_image(image_bytes: bytes) -> None:
         image.verify()
 
 
+def _vector_dimensions(size: int) -> tuple[int, int]:
+    width = int(math.sqrt(size))
+    while width > 1 and size % width != 0:
+        width -= 1
+    return width, size // width
+
+
 def build_embedding(image_bytes: bytes) -> list[float]:
     with Image.open(io.BytesIO(image_bytes)) as image:
         image = ImageOps.exif_transpose(image)
         image = image.convert("L")
-        side = int(VECTOR_SIZE ** 0.5)
-        image = ImageOps.fit(image, (side, side), method=Image.Resampling.BILINEAR)
+        width, height = _vector_dimensions(VECTOR_SIZE)
+        image = ImageOps.fit(image, (width, height), method=Image.Resampling.BILINEAR)
         vector = np.asarray(image, dtype=np.float32).reshape(-1)
 
     vector = vector / 255.0

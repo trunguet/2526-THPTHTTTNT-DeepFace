@@ -20,7 +20,6 @@ Open:
 - Backend health: http://localhost:18000/health
 - MinIO console: http://localhost:19001
 - Qdrant dashboard: http://localhost:16333/dashboard
-- PostgreSQL: localhost:15432
 - Redis: localhost:16379
 
 MinIO login:
@@ -54,7 +53,7 @@ Detailed frontend review and next-step checklist: [docs/frontend-review.md](docs
 The backend now includes an end-to-end MVP for the face access-control use case:
 
 - FastAPI REST API.
-- PostgreSQL for employees and access logs.
+- TiDB Cloud for employees and access logs.
 - MinIO for employee images and verification snapshots.
 - Qdrant for face/image vectors.
 - Redis queue plus `worker` service for background embedding jobs.
@@ -85,4 +84,4 @@ Important API endpoints:
 
 ## Notes
 
-This is a functional Docker MVP for the course project. The recognition pipeline uses a lightweight embedding method, not a production-grade DeepFace model. For a higher accuracy submission, replace `backend/app/ai.py` with a real face detector/embedding model while keeping the same API contract.
+This is a functional Docker MVP for the course project. Runtime database settings are loaded from `.env`; the current setup targets TiDB Cloud with SSL enabled. The Docker path currently uses a lightweight 512-dimensional image embedding so the system can run quickly. The YOLOv8-Face, MiniFASNet, and ArcFace files are present in the repository, but they still need to be packaged into the backend image with their heavy dependencies before the production pipeline is fully active in Docker.

@@ -4,3 +4,9 @@ pydantic
 pymysql
 python-multipart
 qdrant-client
+sqlalchemy
+redis
+minio
+pillow
+numpy
+cryptography

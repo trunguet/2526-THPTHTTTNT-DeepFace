@@ -31,7 +31,7 @@ class AddEmployeeModule {
       process.env.REACT_APP_API_BASE_URL
         ? process.env.REACT_APP_API_BASE_URL
         : null;
-    return envBaseUrl || 'http://localhost:8000';
+    return envBaseUrl || window.DeepFaceAPI?.getBaseURL?.() || 'http://localhost:18000';
   }
 
   /**
@@ -73,7 +73,7 @@ class AddEmployeeModule {
 
     try {
       // Step 1: Upload image to MinIO
-      const imageUrl = await this.uploadImageToMinio(imageFile, employeeId);
+      const upload = await this.uploadImageToMinio(imageFile, employeeId);
 
       // Step 2: Create employee record in database
       const employee = await this.createEmployeeRecord({
@@ -81,11 +81,12 @@ class AddEmployeeModule {
         employee_id: employeeId,
         email: email,
         department: department,
-        image_url: imageUrl,
+        image_url: upload.image_url,
+        image_object_key: upload.image_object_key,
       });
 
       // Step 3: Trigger vector embedding extraction
-      await this.triggerVectorExtraction(employee.id, imageUrl);
+      await this.triggerVectorExtraction(employee.id);
 
       this.showMessage('✓ Thêm nhân viên thành công!', 'success');
       this.form.reset();
@@ -95,7 +96,7 @@ class AddEmployeeModule {
 
       // Redirect after 2 seconds
       setTimeout(() => {
-        window.location.href = '/admin/manage_list.html';
+        window.location.href = './manage_list.html';
       }, 2000);
     } catch (error) {
       console.error('Error:', error);
@@ -124,7 +125,10 @@ class AddEmployeeModule {
       }
 
       const data = await response.json();
-      return data.image_url || data.url;
+      return {
+        image_url: data.image_url || data.url,
+        image_object_key: data.image_object_key || '',
+      };
     } catch (error) {
       throw new Error(`Image upload failed: ${error.message}`);
     }
@@ -157,7 +161,7 @@ class AddEmployeeModule {
   /**
    * Trigger vector embedding extraction and Qdrant indexing
    */
-  async triggerVectorExtraction(employeeId, imageUrl) {
+  async triggerVectorExtraction(employeeId) {
     try {
       const response = await fetch(`${this.apiBaseURL}/api/employees/${employeeId}/extract-embedding`, {
         method: 'POST',
@@ -165,7 +169,7 @@ class AddEmployeeModule {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.getAuthToken()}`,
         },
-        body: JSON.stringify({ image_url: imageUrl }),
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
