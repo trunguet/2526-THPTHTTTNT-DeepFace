@@ -10,11 +10,3 @@ minio
 pillow
 numpy
 cryptography
-opencv-python-headless
-torch
-torchvision
-ultralytics
-tensorflow
-tf-keras
-deepface
-h5py
