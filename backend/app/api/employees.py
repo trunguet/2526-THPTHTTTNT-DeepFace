@@ -168,7 +168,12 @@ def extract_embedding(employee_id: int, db: Session = Depends(get_db)) -> dict[s
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    _index_employee(employee, db)
+    try:
+        _index_employee(employee, db)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Embedding extraction failed: {exc}")
     return {"status": "ok"}
 
 
