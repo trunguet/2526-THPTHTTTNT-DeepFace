@@ -59,7 +59,7 @@ body {
     rgba(255, 255, 255, 0.04);
 }
 
-.brand-eye {
+/* .brand-eye {
   width: 42px;
   height: 24px;
   border: 2px solid rgba(248, 250, 252, 0.9);
@@ -78,8 +78,58 @@ body {
   background: var(--primary);
   box-shadow: 0 0 18px rgba(45, 212, 191, 0.85);
   transform: translate(-50%, -50%);
+} */
+/* --- THÊM CSS KHUÔN MẶT MỚI --- */
+.brand-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+/* Khung bao quanh khuôn mặt */
+.brand-face::before {
+  content: "";
+  position: absolute;
+  top: 10px;    
+  bottom: 12px; 
+  left: 12px;   
+  right: 12px;  
+  border: 2px solid rgba(248, 250, 252, 0.75); /* Viền màu trắng mờ */
+  border-radius: 16px; /* Bo góc mềm mại tạo dáng khuôn mặt */
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.25), 
+        inset 0 0 12px rgba(45, 212, 191, 0.25); /* Ánh sáng hắt nhẹ màu xanh lục */
 }
 
+.eye-left,
+.eye-right {
+  position: absolute;
+  top: 24px;
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(45, 212, 191, 0.85); /* Giữ lại hiệu ứng phát sáng */
+}
+
+.eye-left {
+  left: 22px;
+}
+
+.eye-right {
+  right: 22px;
+}
+
+.mouth {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 4px;
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 4px;
+}
+
+/* ----------------------------- */
 .brand-scan {
   position: absolute;
   left: 12px;
@@ -203,11 +253,11 @@ h1 {
 @keyframes scanLine {
   0%,
   100% {
-    top: 18px;
+    top: 8px;
     opacity: 0.45;
   }
   50% {
-    top: 54px;
+    top: 64px;
     opacity: 1;
   }
 }

@@ -6,6 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV TF_USE_LEGACY_KERAS=1
 ENV MODELS_DIR=/app/models
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_REQUIRE_HASHES=0
+ENV PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -17,21 +20,19 @@ RUN apt-get update \
         libxcb1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt .
-COPY backend/requirements-ml.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r requirements-ml.txt \
-    && pip uninstall -y opencv-python \
-    && pip install --no-cache-dir --force-reinstall opencv-python-headless==4.10.0.84
-RUN pip install --no-cache-dir --force-reinstall --no-deps \
-    numpy==1.26.4 \
-    opencv-python-headless==4.10.0.84
+COPY backend/requirements.txt backend/requirements-ml.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-ml.txt \
+    && pip install --no-cache-dir --force-reinstall --no-deps \
+        numpy==1.26.4 \
+        opencv-python-headless==4.10.0.84
 
 COPY backend/app ./app
 COPY models ./models
 
 RUN mkdir -p /root/.deepface/weights \
-    && cp /app/models/extraction/arcface_weights.h5 /root/.deepface/weights/arcface_weights.h5
+    && if [ -f /app/models/extraction/arcface_weights.h5 ]; then \
+        cp /app/models/extraction/arcface_weights.h5 /root/.deepface/weights/arcface_weights.h5; \
+    fi
 
 EXPOSE 8000
 

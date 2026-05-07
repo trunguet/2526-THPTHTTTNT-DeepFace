@@ -91,6 +91,8 @@ Important API endpoints:
 - `GET /api/access-logs/alerts`
 - `POST /api/access-logs/alerts/{id}/dismiss`
 - `GET /api/employees/{employee_id}/access-history`
+# Chạy luồng Backup:
+- docker compose run --rm backup
 
 ## Notes
 

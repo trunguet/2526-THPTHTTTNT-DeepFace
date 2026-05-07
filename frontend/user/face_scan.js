@@ -223,7 +223,7 @@ class FaceScanModule {
       resultDiv.innerHTML = `
         <div class="result-icon">✓</div>
         <h2>Chào mừng!</h2>
-        <p class="result-name">${result.employee_name || 'Nhân viên'}</p>
+        <p class="result-name">${window.DeepFaceAPI.escapeHTML(result.employee_name || 'Nhân viên')}</p>
         <p class="result-message">Xác thực thành công</p>
         <p class="result-confidence">Độ tin cậy: ${(result.confidence * 100).toFixed(2)}%</p>
       `;
@@ -233,7 +233,7 @@ class FaceScanModule {
       resultDiv.innerHTML = `
         <div class="result-icon">✗</div>
         <h2>Xác thực thất bại</h2>
-        <p class="result-message">${result.message || 'Khuôn mặt không khớp với dữ liệu trong hệ thống'}</p>
+        <p class="result-message">${window.DeepFaceAPI.escapeHTML(result.message || 'Khuôn mặt không khớp với dữ liệu trong hệ thống')}</p>
         <p class="result-hint">Vui lòng liên hệ quản trị viên</p>
       `;
       this.showStatus('❌ Xác thực thất bại!', 'error');

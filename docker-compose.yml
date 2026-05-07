@@ -1,5 +1,6 @@
 services:
   backend:
+    image: deepface_backend:latest
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -24,11 +25,11 @@ services:
       - minio
       - qdrant
     restart: unless-stopped
+    volumes:
+      - ./model_cache:/root/.deepface/weights
 
   worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: deepface_backend:latest
     container_name: deepface_worker
     command: ["python", "-m", "app.worker"]
     environment:
@@ -48,6 +49,8 @@ services:
       - minio
       - qdrant
     restart: unless-stopped
+    volumes:
+      - ./model_cache:/root/.deepface/weights
 
   frontend-home:
     build:
@@ -121,6 +124,29 @@ services:
       - "16334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+
+  backup:
+    build:
+      context: ./backup_service
+      dockerfile: Dockerfile
+    container_name: deepface_backup
+    environment:
+      BACKUP_DIR: /backups
+      RETENTION_DAYS: 7
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-deepface}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-deepface_root_password}
+      ENABLE_REDIS_BACKUP: "false"
+    volumes:
+      - ./backups:/backups
+      - minio_data:/data/minio:ro
+      - qdrant_data:/data/qdrant:ro
+      - redis_data:/data/redis:ro
+    depends_on:
+      - mysql
+      - minio
+      - qdrant
 
 volumes:
   mysql_data:
