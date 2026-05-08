@@ -85,69 +85,7 @@
           </div>
         </div>
 
-        <!-- History Section -->
-        <div id="history-section" class="section">
-          <div class="card">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px">
-              <h2 class="card-title" style="margin: 0">📋 Lịch Sử Check-in</h2>
-              <button class="history-back-button" id="history-back-btn" type="button" onclick="showSection('face-scan-section')">
-                <span>←</span>
-                <span>Quay Lại</span>
-              </button>
-            </div>
-
-            <!-- Stats Grid -->
-            <div id="stats-container" class="stats-grid"></div>
-
-            <!-- Filters -->
-            <div class="filter-group">
-              <input type="date" id="date-filter" placeholder="Lọc theo ngày" />
-              <input type="month" id="month-filter" placeholder="Lọc theo tháng" />
-              <button class="btn btn-primary" id="refresh-btn">
-                <span>↻</span>
-                <span>Làm Mới</span>
-              </button>
-              <button class="btn btn-secondary" id="export-btn">
-                <span>📥</span>
-                <span>Tải CSV</span>
-              </button>
-            </div>
-
-            <!-- History Table -->
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>STT</th>
-                    <th>Ngày</th>
-                    <th>Giờ</th>
-                    <th>Loại</th>
-                    <th>Vị Trí Camera</th>
-                    <th>Trạng Thái</th>
-                  </tr>
-                </thead>
-                <tbody id="history-table-body">
-                  <tr>
-                    <td colspan="6" style="text-align: center; color: #a0aec0">Đang tải dữ liệu...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
-
-    <!-- Tab Navigation -->
-    <div style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); padding: 15px; border-radius: 12px; border: 1px solid rgba(124, 196, 237, 0.2); display: flex; gap: 10px">
-      <button class="btn btn-primary" onclick="showSection('face-scan-section')" style="flex: 1">
-        <span>👤</span>
-        <span>Xác Thực</span>
-      </button>
-      <button class="btn btn-secondary" onclick="showSection('history-section')" style="flex: 1">
-        <span>📋</span>
-        <span>Lịch Sử</span>
-      </button>
     </div>
 
     <!-- Background -->
@@ -156,16 +94,7 @@
     <script src="../shared/api.js"></script>
     <script src="./api.js"></script>
     <script src="./face_scan.js"></script>
-    <script src="./check_history.js"></script>
     <script>
-      // Section Navigation
-      function showSection(sectionId) {
-        document.querySelectorAll('.section').forEach((section) => {
-          section.classList.remove('active');
-        });
-        document.getElementById(sectionId).classList.add('active');
-      }
-
       // User Info Display
       function loadUserInfo() {
         const userId = localStorage.getItem('employee_id');

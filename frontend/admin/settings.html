@@ -13,23 +13,56 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="sidebar-logo">
-            <span>🎭</span>
-            <span>DeepFace</span>
+            <span class="logo-icon">🎭</span>
+            <span class="logo-text">DeepFace</span>
           </div>
         </div>
         <nav class="sidebar-nav">
-          <li><a href="./index.html">Dashboard</a></li>
-          <li><a href="./add_employee.html">➕ Thêm Nhân Viên</a></li>
-          <li><a href="./manage_list.html">👥 Quản Lý Danh Sách</a></li>
-          <li><a href="./view_logs.html">📋 Xem Nhật Ký</a></li>
-          <li><a href="./settings.html" class="active">⚙️ Cài Đặt</a></li>
-          <li><a href="#" onclick="handleLogout()">🚪 Đăng Xuất</a></li>
+          <li>
+            <a href="./index.html" title="Dashboard">
+              <span class="nav-icon">📊</span>
+              <span class="nav-label">Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="./add_employee.html" title="Thêm Nhân Viên">
+              <span class="nav-icon">➕</span>
+              <span class="nav-label">Thêm Nhân Viên</span>
+            </a>
+          </li>
+          <li>
+            <a href="./manage_list.html" title="Quản Lý Danh Sách">
+              <span class="nav-icon">👥</span>
+              <span class="nav-label">Quản Lý Danh Sách</span>
+            </a>
+          </li>
+          <li>
+            <a href="./view_logs.html" title="Xem Nhật Ký">
+              <span class="nav-icon">📋</span>
+              <span class="nav-label">Xem Nhật Ký</span>
+            </a>
+          </li>
+          <li>
+            <a href="./settings.html" class="active" title="Cài Đặt">
+              <span class="nav-icon">⚙️</span>
+              <span class="nav-label">Cài Đặt</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" onclick="handleLogout()" title="Đăng Xuất">
+              <span class="nav-icon">🚪</span>
+              <span class="nav-label">Đăng Xuất</span>
+            </a>
+          </li>
         </nav>
       </aside>
 
       <div class="main-content">
         <header class="header">
-          <h1 class="header-title">Cài Đặt Hệ Thống</h1>
+          <div class="header-left">
+            <button class="sidebar-toggle" type="button" aria-label="Thu gọn/mở menu" title="Thu gọn/mở menu">☰</button>
+            <h1 class="header-title">Cài Đặt Hệ Thống</h1>
+          </div>
         </header>
 
         <div class="content-area">
@@ -55,11 +88,60 @@
               <div id="settings-status" class="status-message" style="display: none"></div>
             </div>
           </div>
+
+          <div class="card" style="margin-top: 20px">
+            <div class="card-header unscanned-header">
+              <div style="display: grid; gap: 6px">
+                <h2 class="card-title" title="Danh sách nhân viên chưa được hệ thống ghi nhận quét hôm nay">Nhân Viên Chưa Quét Hôm Nay</h2>
+                <div class="unscanned-metrics">
+                  <span class="unscanned-chip">
+                    <span class="unscanned-chip-label">Ngày</span>
+                    <span id="unscanned-today-date" class="unscanned-chip-value">--</span>
+                  </span>
+                  <span class="unscanned-chip unscanned-chip-warn">
+                    <span class="unscanned-chip-label">Chưa quét</span>
+                    <span id="unscanned-today-count" class="unscanned-chip-value">--</span>
+                  </span>
+                </div>
+              </div>
+
+              <button class="btn btn-secondary" id="refresh-unscanned-today" type="button" title="Làm mới danh sách">
+                <span>↻</span>
+                <span>Làm mới</span>
+              </button>
+            </div>
+
+            <div class="unscanned-note">
+              Ghi chú: Nhân viên sẽ biến mất khỏi danh sách khi hệ thống ghi nhận có lượt quét trong ngày (có log gắn với nhân viên), kể cả quét thất bại.
+            </div>
+
+            <div id="unscanned-today-status" class="status-message" style="display: none"></div>
+
+            <div class="table-container" style="margin-top: 12px">
+              <table>
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Họ và Tên</th>
+                    <th>Mã NV</th>
+                    <th>Phòng Ban</th>
+                    <th>Email</th>
+                  </tr>
+                </thead>
+                <tbody id="unscanned-today-body">
+                  <tr>
+                    <td colspan="5" style="text-align: center; color: #a0aec0">Đang tải dữ liệu...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <script src="../shared/background.js"></script>
+    <script src="./sidebar.js"></script>
     <script src="../shared/api.js"></script>
     <script src="./api.js"></script>
     <script src="./settings.js"></script>

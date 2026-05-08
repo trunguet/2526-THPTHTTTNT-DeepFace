@@ -12,6 +12,20 @@ from app.storage import save_bytes
 router = APIRouter(prefix="/api/access", tags=["access"])
 
 
+def _resolve_employee(db: Session, identifier: str | None) -> Employee | None:
+    value = str(identifier or "").strip()
+    if not value:
+        return None
+
+    employee = db.query(Employee).filter(Employee.employee_code == value).first()
+    if employee is not None:
+        return employee
+
+    if value.isdigit():
+        return db.query(Employee).filter(Employee.id == int(value)).first()
+    return None
+
+
 @router.post("/verify-face")
 def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
     try:
@@ -19,6 +33,11 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         validate_image(image_bytes)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}")
+
+    # Optional hint from client (used to link failed attempts to a known employee).
+    # If the provided identifier does not exist, ignore it so face verification
+    # still works (the client might be in demo mode or misconfigured).
+    employee_hint = _resolve_employee(db, request.employee_id)
 
     snapshot_key, snapshot_url = save_bytes("audit/unknown", image_bytes)
     try:
@@ -31,13 +50,30 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     payload = match.payload if match else {}
 
     if result.status == "accepted" and match is not None:
-        employee = None
+        matched_code = str(match.employee_id or "").strip() or None
+        employee = _resolve_employee(db, matched_code)
         db_id = payload.get("db_id")
+        if db_id is None:
+            # Backward/compat: some vector payloads may store the business id only.
+            db_id = payload.get("id") or payload.get("employee_db_id")
         if db_id is not None:
-            employee = db.query(Employee).filter(Employee.id == int(db_id)).first()
+            try:
+                employee = db.query(Employee).filter(Employee.id == int(db_id)).first()
+            except (TypeError, ValueError):
+                employee = None
+
+        if employee is None:
+            business_id = payload.get("employee_id") or payload.get("employee_code")
+            if business_id:
+                employee = _resolve_employee(db, str(business_id))
+
+        # If we cannot resolve the matched employee but the client provided an employee hint,
+        # still link the log row so "seen today" reflects the successful scan.
+        if employee is None and employee_hint is not None:
+            employee = employee_hint
 
         log = AttendanceLog(
-            employee_id=employee.id if employee else None,
+            employee_code=(matched_code or (employee.employee_code if employee else None)),
             status="SUCCESS",
             minio_snapshot_path=snapshot_key,
         )
@@ -46,7 +82,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
 
         return {
             "status": "allowed",
-            "employee_id": (employee.employee_code or str(employee.id)) if employee else None,
+            "employee_id": (matched_code or (employee.employee_code if employee else None)),
             "employee_name": employee.full_name if employee else str(payload.get("full_name") or ""),
             "confidence": score,
             "audit_object": snapshot_key,
@@ -54,9 +90,15 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
             "reason": result.reason,
         }
 
+    linked_employee = employee_hint
+    log_status = (
+        "FAILED"
+        if linked_employee is not None
+        else ("STRANGER" if result.reason == "no_match" else "FAILED")
+    )
     log = AttendanceLog(
-        employee_id=None,
-        status="STRANGER" if result.reason == "no_match" else "FAILED",
+        employee_code=linked_employee.employee_code if linked_employee else None,
+        status=log_status,
         minio_snapshot_path=snapshot_key,
     )
     db.add(log)
@@ -69,7 +111,9 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     }.get(result.reason, "Xác thực khuôn mặt thất bại")
 
     return {
-        "status": "stranger" if result.reason == "no_match" else "denied",
+        "status": "denied"
+        if linked_employee is not None
+        else ("stranger" if result.reason == "no_match" else "denied"),
         "reason": result.reason,
         "message": message,
         "confidence": score,

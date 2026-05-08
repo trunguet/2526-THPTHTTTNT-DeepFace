@@ -88,7 +88,7 @@ def ensure_schema(conn: pymysql.connections.Connection) -> None:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS attendance_logs ("
             "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-            "employee_id BIGINT NULL,"
+            "employee_code VARCHAR(50) NULL,"
             "scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
             "status ENUM('SUCCESS','FAILED','STRANGER') NOT NULL,"
             "minio_snapshot_path VARCHAR(255) NULL"
@@ -99,6 +99,7 @@ def ensure_schema(conn: pymysql.connections.Connection) -> None:
         ("employees", "employee_code VARCHAR(50) NULL"),
         ("employees", "email VARCHAR(100) NULL"),
         ("employees", "department VARCHAR(100) NULL"),
+        ("attendance_logs", "employee_code VARCHAR(50) NULL"),
         ("attendance_logs", "camera_id VARCHAR(64) NULL"),
         ("attendance_logs", "client_id VARCHAR(64) NULL"),
         ("attendance_logs", "similarity FLOAT NULL"),
@@ -119,3 +120,7 @@ def ensure_schema(conn: pymysql.connections.Connection) -> None:
         cursor.execute("ALTER TABLE employees MODIFY COLUMN employee_code VARCHAR(50) NOT NULL")
         if not _index_exists(conn, "employees", "ux_employees_employee_code"):
             cursor.execute("CREATE UNIQUE INDEX ux_employees_employee_code ON employees (employee_code)")
+
+        # Performance: look up "today" scans by employee efficiently.
+        if not _index_exists(conn, "attendance_logs", "idx_attendance_employee_scan_time"):
+            cursor.execute("CREATE INDEX idx_attendance_employee_scan_time ON attendance_logs (employee_code, scan_time)")

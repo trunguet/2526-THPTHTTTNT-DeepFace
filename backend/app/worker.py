@@ -4,7 +4,7 @@ import time
 from sqlalchemy.orm import Session
 
 from app.ai import build_embedding
-from app.db import Employee, SessionLocal, init_db, now_utc
+from app.db import Employee, SessionLocal, init_db
 from app.jobs import QUEUE_NAME, get_redis_client
 from app.storage import init_bucket, read_bytes
 from app.vector_store import init_collection, upsert_employee_vector
@@ -32,7 +32,6 @@ def process_embedding_job(db: Session, employee_id: int) -> None:
         employee.is_vectorized = False
         print(f"Failed to index employee {employee_id}: {exc}", flush=True)
     finally:
-        employee.updated_at = now_utc()
         db.commit()
 
 

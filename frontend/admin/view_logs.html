@@ -14,24 +14,57 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="sidebar-logo">
-            <span>🎭</span>
-            <span>DeepFace</span>
+            <span class="logo-icon">🎭</span>
+            <span class="logo-text">DeepFace</span>
           </div>
         </div>
         <nav class="sidebar-nav">
-          <li><a href="./index.html">Dashboard</a></li>
-          <li><a href="./add_employee.html">➕ Thêm Nhân Viên</a></li>
-          <li><a href="./manage_list.html">👥 Quản Lý Danh Sách</a></li>
-          <li><a href="./view_logs.html" class="active">📋 Xem Nhật Ký</a></li>
-          <li><a href="./settings.html">⚙️ Cài Đặt</a></li>
-          <li><a href="#logout" onclick="handleLogout()">🚪 Đăng Xuất</a></li>
+          <li>
+            <a href="./index.html" title="Dashboard">
+              <span class="nav-icon">📊</span>
+              <span class="nav-label">Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="./add_employee.html" title="Thêm Nhân Viên">
+              <span class="nav-icon">➕</span>
+              <span class="nav-label">Thêm Nhân Viên</span>
+            </a>
+          </li>
+          <li>
+            <a href="./manage_list.html" title="Quản Lý Danh Sách">
+              <span class="nav-icon">👥</span>
+              <span class="nav-label">Quản Lý Danh Sách</span>
+            </a>
+          </li>
+          <li>
+            <a href="./view_logs.html" class="active" title="Xem Nhật Ký">
+              <span class="nav-icon">📋</span>
+              <span class="nav-label">Xem Nhật Ký</span>
+            </a>
+          </li>
+          <li>
+            <a href="./settings.html" title="Cài Đặt">
+              <span class="nav-icon">⚙️</span>
+              <span class="nav-label">Cài Đặt</span>
+            </a>
+          </li>
+          <li>
+            <a href="#logout" onclick="handleLogout()" title="Đăng Xuất">
+              <span class="nav-icon">🚪</span>
+              <span class="nav-label">Đăng Xuất</span>
+            </a>
+          </li>
         </nav>
       </aside>
 
       <!-- Main Content -->
       <div class="main-content">
         <header class="header">
-          <h1 class="header-title">Nhật Ký Truy Cập</h1>
+          <div class="header-left">
+            <button class="sidebar-toggle" type="button" aria-label="Thu gọn/mở menu" title="Thu gọn/mở menu">☰</button>
+            <h1 class="header-title">Nhật Ký Truy Cập</h1>
+          </div>
           <button class="btn btn-primary" id="refresh-btn">
             <span>↻</span>
             <span>Làm Mới</span>
@@ -106,6 +139,7 @@
 
     <!-- Background -->
     <script src="../shared/background.js"></script>
+    <script src="./sidebar.js"></script>
     <!-- Module Scripts -->
     <script src="../shared/api.js"></script>
     <script src="./api.js"></script>

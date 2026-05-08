@@ -18,6 +18,7 @@ class EmployeeUpdate(BaseModel):
 
 class VerifyFaceRequest(BaseModel):
     image: str
+    employee_id: str | None = None
     camera_location: str = "Main Gate"
     access_type: str = "check_in"
 

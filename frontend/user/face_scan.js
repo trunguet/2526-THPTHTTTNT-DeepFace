@@ -194,6 +194,10 @@ class FaceScanModule {
       const payload = {
         image: frameBase64,
       };
+      const employeeId = (localStorage.getItem('employee_id') || '').trim();
+      if (employeeId) {
+        payload.employee_id = employeeId;
+      }
       return window.DeepFaceAPI
         ? await window.DeepFaceAPI.post('/api/access/verify-face', payload)
         : await this.fetchJson('/api/access/verify-face', {

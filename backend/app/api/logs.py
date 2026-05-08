@@ -17,9 +17,9 @@ def _snapshot_url(log: AttendanceLog) -> str:
 def _log_to_dict(log: AttendanceLog) -> dict[str, Any]:
     business_id = None
     if log.employee is not None:
-        business_id = log.employee.employee_code or (str(log.employee_id) if log.employee_id else None)
-    elif log.employee_id:
-        business_id = str(log.employee_id)
+        business_id = log.employee.employee_code
+    elif log.employee_code:
+        business_id = str(log.employee_code)
     return {
         "id": log.id,
         "employee_name": log.employee.full_name if log.employee else None,

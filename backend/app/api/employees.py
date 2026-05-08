@@ -1,11 +1,12 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.ai import build_embedding, validate_image
-from app.db import AttendanceLog, Employee, EmployeeBackup, get_db, now_utc
+from app.db import AttendanceLog, Employee, EmployeeBackup, get_db
 from app.jobs import enqueue_embedding_job
 from app.schemas import EmployeeCreate, EmployeeUpdate
 from app.storage import delete_object, read_bytes, save_bytes
@@ -73,7 +74,6 @@ def _index_employee(employee: Employee, db: Session) -> None:
         },
     )
     employee.is_vectorized = True
-    employee.updated_at = now_utc()
     db.commit()
 
 
@@ -121,8 +121,6 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> d
     try:
         enqueue_embedding_job(employee.id)
     except Exception as exc:
-        employee.updated_at = now_utc()
-        db.commit()
         print(f"[WARN] Failed to enqueue embedding job for employee {employee.id}: {exc}", flush=True)
 
     return _employee_to_dict(employee)
@@ -132,6 +130,53 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> d
 def list_employees(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     employees = db.query(Employee).order_by(Employee.id.desc()).all()
     return [_employee_to_dict(employee) for employee in employees]
+
+
+@router.get("/unscanned-today")
+def list_unscanned_today(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """
+    Return employees that the system has not "seen" today, i.e. there is no
+    attendance log row linked to the employee for today's Vietnam-local date.
+
+    Note: Attendance logs can be linked either by successful recognition or by
+    a client-provided employee identifier for failed attempts. This endpoint
+    checks linkage, not recognition success.
+    The DB connection sets `time_zone = +07:00`, so CURDATE()/DATE(scan_time)
+    align with Vietnam time.
+    """
+
+    start_of_day = func.curdate()
+    end_of_day = func.date_add(func.curdate(), text("INTERVAL 1 DAY"))
+    scanned_today = (
+        db.query(AttendanceLog.id)
+        .filter(AttendanceLog.employee_code == Employee.employee_code)
+        .filter(AttendanceLog.scan_time >= start_of_day)
+        .filter(AttendanceLog.scan_time < end_of_day)
+    )
+
+    employees = (
+        db.query(Employee)
+        .filter(~scanned_today.exists())
+        .order_by(Employee.full_name.asc(), Employee.employee_code.asc())
+        .all()
+    )
+
+    today = db.query(func.curdate()).scalar()
+    return {
+        "date": str(today) if today is not None else "",
+        "count": len(employees),
+        "items": [
+            {
+                "id": employee.id,
+                "employee_id": employee.employee_code,
+                "full_name": employee.full_name,
+                "email": employee.email or "",
+                "department": employee.department or "",
+                "created_at": employee.created_at,
+            }
+            for employee in employees
+        ],
+    }
 
 
 @router.put("/{employee_id}")
@@ -154,7 +199,6 @@ def update_employee(employee_id: str, payload: EmployeeUpdate, db: Session = Dep
         employee.email = payload.email.strip() or None
     if payload.department is not None:
         employee.department = payload.department.strip() or None
-    employee.updated_at = now_utc()
     db.commit()
     db.refresh(employee)
 
@@ -221,7 +265,7 @@ def access_history(employee_id: str, db: Session = Depends(get_db)) -> list[dict
 
     rows = (
         db.query(AttendanceLog)
-        .filter(AttendanceLog.employee_id == employee.id)
+        .filter(AttendanceLog.employee_code == employee.employee_code)
         .order_by(AttendanceLog.scan_time.desc())
         .all()
     )
