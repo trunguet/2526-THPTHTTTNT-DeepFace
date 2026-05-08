@@ -23,7 +23,7 @@ class ManageEmployeeListModule {
     this.apiBaseURL = this.getApiBaseURL();
     this.allEmployees = [];
     this.employees = [];
-    this.selectedEditId = null;
+    this.selectedEmployeeIdForEdit = null;
     this.selectedEmployeeId = null;
 
     this.init();
@@ -75,22 +75,16 @@ class ManageEmployeeListModule {
 
   async fetchEmployees() {
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees`, {
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
+      // Sử dụng API client dùng chung để nhất quán và xử lý lỗi tốt hơn
+      const employeeList = await window.DeepFaceAdmin.get('/api/employees');
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch employees');
-      }
-
-      this.allEmployees = await response.json();
+      // Chuẩn hóa dữ liệu trả về từ API
+      this.allEmployees = window.DeepFaceAdmin.normalizeList(employeeList);
       this.employees = [...this.allEmployees];
       this.renderTable();
     } catch (error) {
       console.error('Error fetching employees:', error);
-      this.showError('Khong the tai danh sach nhan vien');
+      this.showError(`Không thể tải danh sách nhân viên: ${error.message}`);
     }
   }
 
@@ -100,22 +94,24 @@ class ManageEmployeeListModule {
     this.tableBody.innerHTML = '';
 
     if (this.employees.length === 0) {
-      this.tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Khong co nhan vien nao</td></tr>';
+      this.tableBody.innerHTML =
+        '<tr><td colspan="6" style="text-align: center; color: #a0aec0">Không có nhân viên nào</td></tr>';
       return;
     }
 
     this.employees.forEach((employee, index) => {
       const row = document.createElement('tr');
       const escape = window.DeepFaceAPI?.escapeHTML || ((value) => String(value ?? ''));
+      // Sửa lại để hiển thị `employee_id` (mã nghiệp vụ) thay vì `id` (mã DB)
       row.innerHTML = `
         <td>${index + 1}</td>
-        <td>${escape(employee.full_name)}</td>
+        <td>${escape(employee.full_name)}</td> 
         <td>${escape(employee.employee_id)}</td>
         <td>${escape(employee.email)}</td>
         <td>${escape(employee.department || 'N/A')}</td>
         <td>
-          <button class="btn btn-sm btn-edit" type="button" onclick="manageModule.editEmployee(${employee.id})">Sua</button>
-          <button class="btn btn-sm btn-delete" type="button" onclick="manageModule.openDeleteModal(${employee.id})">Xoa</button>
+          <button class="btn btn-sm btn-edit" type="button" onclick="manageModule.editEmployee('${escape(employee.employee_id)}')">Sửa</button>
+          <button class="btn btn-sm btn-delete" type="button" onclick="manageModule.openDeleteModal('${escape(employee.employee_id)}')">Xóa</button>
         </td>
       `;
       this.tableBody.appendChild(row);
@@ -140,13 +136,14 @@ class ManageEmployeeListModule {
   }
 
   editEmployee(employeeId) {
-    const employee = this.allEmployees.find((item) => item.id === employeeId);
+    // Tìm nhân viên bằng mã nghiệp vụ `employee_id`
+    const employee = this.allEmployees.find((item) => item.employee_id === employeeId);
     if (!employee) {
-      this.showError('Khong tim thay nhan vien');
+      this.showError('Không tìm thấy nhân viên.');
       return;
     }
 
-    this.selectedEditId = employeeId;
+    this.selectedEmployeeIdForEdit = employee.employee_id;
     this.editNameInput.value = employee.full_name || '';
     this.editCodeInput.value = employee.employee_id || '';
     this.editEmailInput.value = employee.email || '';
@@ -156,7 +153,7 @@ class ManageEmployeeListModule {
 
   closeEditModal() {
     this.closeModal(this.editModal);
-    this.selectedEditId = null;
+    this.selectedEmployeeIdForEdit = null;
     if (this.editForm) {
       this.editForm.reset();
     }
@@ -164,7 +161,7 @@ class ManageEmployeeListModule {
 
   async saveEmployee(event) {
     event.preventDefault();
-    if (!this.selectedEditId) return;
+    if (!this.selectedEmployeeIdForEdit) return;
 
     const payload = {
       full_name: this.editNameInput.value.trim(),
@@ -173,33 +170,22 @@ class ManageEmployeeListModule {
     };
 
     if (!payload.full_name) {
-      this.showError('Vui long nhap ho va ten');
+      this.showError('Vui lòng nhập họ và tên.');
       return;
     }
 
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees/${this.selectedEditId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update employee');
-      }
+      // Sử dụng API client để cập nhật, URL dùng mã nghiệp vụ `employee_id`
+      await window.DeepFaceAdmin.put(`/api/employees/${this.selectedEmployeeIdForEdit}`, payload);
 
       this.closeEditModal();
       await this.fetchEmployees();
-      this.showSuccess('Cap nhat nhan vien thanh cong');
+      this.showSuccess('Cập nhật nhân viên thành công!');
     } catch (error) {
       console.error('Error updating employee:', error);
-      this.showError('Khong the cap nhat nhan vien');
+      this.showError(`Không thể cập nhật nhân viên: ${error.message}`);
     }
   }
-
   openDeleteModal(employeeId) {
     this.selectedEmployeeId = employeeId;
     this.openModal(this.deleteModal);
@@ -214,23 +200,15 @@ class ManageEmployeeListModule {
     if (!this.selectedEmployeeId) return;
 
     try {
-      const response = await fetch(`${this.apiBaseURL}/api/employees/${this.selectedEmployeeId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete employee');
-      }
+      // Sử dụng API client để xóa, URL dùng mã nghiệp vụ `employee_id`
+      await window.DeepFaceAdmin.delete(`/api/employees/${this.selectedEmployeeId}`);
 
       this.closeDeleteModal();
       await this.fetchEmployees();
-      this.showSuccess('Xoa nhan vien thanh cong');
+      this.showSuccess('Xóa nhân viên thành công!');
     } catch (error) {
       console.error('Error deleting employee:', error);
-      this.showError('Khong the xoa nhan vien');
+      this.showError(`Không thể xóa nhân viên: ${error.message}`);
     }
   }
 
@@ -248,10 +226,6 @@ class ManageEmployeeListModule {
     }
   }
 
-  getAuthToken() {
-    return localStorage.getItem('auth_token') || '';
-  }
-
   showSuccess(message) {
     this.showAlert(message, 'success');
   }
@@ -262,8 +236,19 @@ class ManageEmployeeListModule {
 
   showAlert(message, type) {
     const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
+    // Tái sử dụng class `notification` từ các module khác để nhất quán
+    alert.className = `notification notification-${type}`;
     alert.textContent = message;
+    alert.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      z-index: 1000;
+      color: white;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    `;
     document.body.appendChild(alert);
 
     setTimeout(() => {

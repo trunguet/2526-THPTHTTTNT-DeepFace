@@ -1,5 +1,5 @@
 import os
-
+from app.ml.pipeline import get_face_pipeline
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -44,10 +44,14 @@ def health_check() -> dict:
 
 @app.on_event("startup")
 def startup() -> None:
-	init_db()
-	init_bucket()
-	init_collection()
+    init_db()
+    init_bucket()
+    init_collection()
 
+    # Ép hệ thống nạp trước 3 model (YOLO, MiniFASNet, ArcFace) vào RAM một cách an toàn
+    print("Đang khởi tạo trước FaceRecognitionPipeline...")
+    get_face_pipeline()
+    print("Khởi tạo AI Model thành công!")
 
 @app.get("/api/files/{object_key:path}")
 def read_file(object_key: str) -> Response:

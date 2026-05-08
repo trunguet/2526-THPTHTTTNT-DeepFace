@@ -140,8 +140,11 @@
     <script src="./add_employee.js"></script>
     <script>
       function handleLogout() {
-        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-          window.DeepFaceAdminAuth?.logout?.();
+        if (confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+          // Xóa token hoặc thông tin phiên làm việc
+          window.DeepFaceAdminAuth?.logout?.(); // This likely clears localStorage
+          // Chuyển hướng người dùng về trang đăng nhập
+          window.location.href = "./login.html";
         }
       }
     </script>

@@ -15,10 +15,15 @@ def _snapshot_url(log: AttendanceLog) -> str:
 
 
 def _log_to_dict(log: AttendanceLog) -> dict[str, Any]:
+    business_id = None
+    if log.employee is not None:
+        business_id = log.employee.employee_code or (str(log.employee_id) if log.employee_id else None)
+    elif log.employee_id:
+        business_id = str(log.employee_id)
     return {
         "id": log.id,
         "employee_name": log.employee.full_name if log.employee else None,
-        "employee_id": str(log.employee_id) if log.employee_id else None,
+        "employee_id": business_id,
         "camera_location": "N/A",
         "timestamp": log.scan_time,
         "status": "allowed" if log.status == "SUCCESS" else "denied",
@@ -38,6 +43,7 @@ def list_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     rows = (
         db.query(AttendanceLog)
         .filter(AttendanceLog.status == "STRANGER")
+        .filter(AttendanceLog.handled.is_(False))
         .order_by(AttendanceLog.scan_time.desc())
         .limit(50)
         .all()
@@ -56,6 +62,9 @@ def list_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
 
 @router.post("/alerts/{alert_id}/dismiss")
 def dismiss_alert(alert_id: int, db: Session = Depends(get_db)) -> dict[str, str]:
-    # The required attendance_logs schema has no handled/dismissed column.
-    # Keep this endpoint as a UI acknowledgement without mutating the log schema.
+    row = db.query(AttendanceLog).filter(AttendanceLog.id == alert_id).first()
+    if row is None:
+        return {"status": "ok"}
+    row.handled = True
+    db.commit()
     return {"status": "ok"}

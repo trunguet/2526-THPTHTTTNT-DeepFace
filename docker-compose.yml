@@ -8,6 +8,7 @@ services:
     ports:
       - "18000:8000"
     environment:
+      TZ: Asia/Ho_Chi_Minh
       DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://${TIDB_USER:-root}:${TIDB_PASSWORD:-deepface_root_password}@${TIDB_HOST:-mysql}:${TIDB_PORT:-3306}/${TIDB_DATABASE:-deepface}?charset=utf8mb4}
       DATABASE_SSL: ${DATABASE_SSL:-false}
       REDIS_URL: redis://redis:6379/0
@@ -20,10 +21,14 @@ services:
       MATCH_THRESHOLD: 0.45
       PUBLIC_API_BASE_URL: http://localhost:18000
     depends_on:
-      - mysql
-      - redis
-      - minio
-      - qdrant
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
     restart: unless-stopped
     volumes:
       - ./model_cache:/root/.deepface/weights
@@ -33,6 +38,7 @@ services:
     container_name: deepface_worker
     command: ["python", "-m", "app.worker"]
     environment:
+      TZ: Asia/Ho_Chi_Minh
       DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://${TIDB_USER:-root}:${TIDB_PASSWORD:-deepface_root_password}@${TIDB_HOST:-mysql}:${TIDB_PORT:-3306}/${TIDB_DATABASE:-deepface}?charset=utf8mb4}
       DATABASE_SSL: ${DATABASE_SSL:-false}
       REDIS_URL: redis://redis:6379/0
@@ -44,10 +50,14 @@ services:
       VECTOR_SIZE: 512
       PUBLIC_API_BASE_URL: http://localhost:18000
     depends_on:
-      - mysql
-      - redis
-      - minio
-      - qdrant
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
     restart: unless-stopped
     volumes:
       - ./model_cache:/root/.deepface/weights
@@ -88,12 +98,19 @@ services:
     container_name: deepface_mysql
     ports:
       - "13306:3306"
+    command: ["--default-time-zone=+07:00"]
     environment:
+      TZ: Asia/Ho_Chi_Minh
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-deepface_root_password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-deepface}
     volumes:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-deepface_root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: minio/minio:latest
@@ -102,19 +119,32 @@ services:
       - "19000:9000"
       - "19001:9001"
     environment:
+      TZ: Asia/Ho_Chi_Minh
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: password123
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: deepface_redis
     ports:
       - "16379:6379"
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -122,6 +152,8 @@ services:
     ports:
       - "16333:6333"
       - "16334:6334"
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     volumes:
       - qdrant_data:/qdrant/storage
 
@@ -131,6 +163,7 @@ services:
       dockerfile: Dockerfile
     container_name: deepface_backup
     environment:
+      TZ: Asia/Ho_Chi_Minh
       BACKUP_DIR: /backups
       RETENTION_DAYS: 7
       MYSQL_HOST: mysql
@@ -144,9 +177,12 @@ services:
       - qdrant_data:/data/qdrant:ro
       - redis_data:/data/redis:ro
     depends_on:
-      - mysql
-      - minio
-      - qdrant
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
 
 volumes:
   mysql_data:

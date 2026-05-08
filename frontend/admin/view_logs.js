@@ -108,7 +108,9 @@ class ViewLogsModule {
     }
 
     this.logs.forEach((log, index) => {
-      const logTime = new Date(log.timestamp).toLocaleString('vi-VN');
+      const logTime = window.DeepFaceAPI?.formatDateTime
+        ? window.DeepFaceAPI.formatDateTime(log.timestamp)
+        : new Date(log.timestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
       const rowClass = log.status === 'denied' ? 'row-denied' : '';
 
       const row = document.createElement('tr');
@@ -147,7 +149,9 @@ class ViewLogsModule {
     }
 
     this.alerts.forEach((alert) => {
-      const alertTime = new Date(alert.timestamp).toLocaleString('vi-VN');
+      const alertTime = window.DeepFaceAPI?.formatDateTime
+        ? window.DeepFaceAPI.formatDateTime(alert.timestamp)
+        : new Date(alert.timestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
       const alertDiv = document.createElement('div');
       alertDiv.className = 'alert-card alert-stranger';
       alertDiv.innerHTML = `

@@ -23,7 +23,7 @@ def process_embedding_job(db: Session, employee_id: int) -> None:
             vector,
             {
                 "db_id": employee.id,
-                "employee_id": str(employee.id),
+                "employee_id": employee.employee_code or str(employee.id),
                 "full_name": employee.full_name,
             },
         )

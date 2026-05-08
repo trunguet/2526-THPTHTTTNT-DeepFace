@@ -123,6 +123,7 @@ class CheckHistoryModule {
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${index + 1}</td>
+        <td>${record.employee_code || this.employeeId}</td>
         <td>${date}</td>
         <td>${time}</td>
         <td>${type}</td>
@@ -221,15 +222,16 @@ class CheckHistoryModule {
       return;
     }
 
-    let csv = 'STT,Ngày,Giờ,Loại,Vị trí Camera,Trạng thái\n';
+    let csv = 'STT,Mã Nhân Viên,Ngày,Giờ,Loại,Vị trí Camera,Trạng thái\n';
 
     this.history.forEach((record, index) => {
       const date = new Date(record.timestamp).toLocaleDateString('vi-VN');
       const time = new Date(record.timestamp).toLocaleTimeString('vi-VN');
       const type = record.access_type === 'check_in' ? 'Check-in' : 'Check-out';
       const status = record.status === 'allowed' ? 'Cho phép' : 'Từ chối';
+      const employeeCode = record.employee_code || this.employeeId;
 
-      csv += `${index + 1},"${date}","${time}","${type}","${record.camera_location || 'N/A'}","${status}"\n`;
+      csv += `${index + 1},"${employeeCode}","${date}","${time}","${type}","${record.camera_location || 'N/A'}","${status}"\n`;
     });
 
     // Create blob and download

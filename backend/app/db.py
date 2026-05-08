@@ -11,9 +11,12 @@ from app.config import DATABASE_SSL, DATABASE_URL
 
 
 def _connect_args() -> dict:
+    # Ensure all MySQL sessions use Vietnam timezone (+07:00) for TIMESTAMP
+    # conversion and functions like NOW()/CURRENT_TIMESTAMP.
+    args: dict = {"init_command": "SET SESSION time_zone = '+07:00'"}
     if DATABASE_SSL:
-        return {"ssl": {"check_hostname": False}}
-    return {}
+        args["ssl"] = {"check_hostname": False}
+    return args
 
 
 def _ensure_database_exists() -> None:
@@ -46,12 +49,16 @@ def _ensure_required_schema() -> None:
         """
         CREATE TABLE IF NOT EXISTS employees (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            employee_code VARCHAR(50) NOT NULL,
             full_name VARCHAR(100) NOT NULL,
+            email VARCHAR(100) NULL,
+            department VARCHAR(100) NULL,
             minio_image_path VARCHAR(255),
             is_vectorized BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY ux_employees_employee_code (employee_code)
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         """,
         """
         CREATE TABLE IF NOT EXISTS employees_backup (
@@ -61,7 +68,7 @@ def _ensure_required_schema() -> None:
             minio_image_path VARCHAR(255),
             action_type ENUM('UPDATE','DELETE'),
             action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         """,
         """
         CREATE TABLE IF NOT EXISTS attendance_logs (
@@ -70,14 +77,77 @@ def _ensure_required_schema() -> None:
             scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status ENUM('SUCCESS','FAILED','STRANGER') NOT NULL,
             minio_snapshot_path VARCHAR(255) NULL,
+            handled TINYINT DEFAULT 0,
             FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         """,
     ]
 
     with engine.begin() as conn:
         for statement in statements:
             conn.execute(text(statement))
+
+        # Backfill schema changes for existing databases created with older versions.
+        # Note: CREATE TABLE IF NOT EXISTS will not add missing columns.
+        def column_exists(table: str, column: str) -> bool:
+            row = conn.execute(
+                text(
+                    """
+                    SELECT COUNT(1) AS cnt
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                      AND table_name = :table_name
+                      AND column_name = :column_name
+                    """
+                ),
+                {"table_name": table, "column_name": column},
+            ).mappings().first()
+            return bool(row and row.get("cnt"))
+
+        def index_exists(table: str, index: str) -> bool:
+            row = conn.execute(
+                text(
+                    """
+                    SELECT COUNT(1) AS cnt
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE()
+                      AND table_name = :table_name
+                      AND index_name = :index_name
+                    """
+                ),
+                {"table_name": table, "index_name": index},
+            ).mappings().first()
+            return bool(row and row.get("cnt"))
+
+        # Employees extended columns
+        if not column_exists("employees", "employee_code"):
+            conn.execute(text("ALTER TABLE employees ADD COLUMN employee_code VARCHAR(50) NULL"))
+        if not column_exists("employees", "email"):
+            conn.execute(text("ALTER TABLE employees ADD COLUMN email VARCHAR(100) NULL"))
+        if not column_exists("employees", "department"):
+            conn.execute(text("ALTER TABLE employees ADD COLUMN department VARCHAR(100) NULL"))
+
+        # Backfill: ensure employee_code is present for older rows.
+        conn.execute(
+            text(
+                """
+                UPDATE employees
+                SET employee_code = CAST(id AS CHAR)
+                WHERE employee_code IS NULL OR employee_code = ''
+                """
+            )
+        )
+
+        # Enforce NOT NULL + expected length. Do this after backfill.
+        conn.execute(text("ALTER TABLE employees MODIFY COLUMN employee_code VARCHAR(50) NOT NULL"))
+
+        # Unique business identifier
+        if not index_exists("employees", "ux_employees_employee_code"):
+            conn.execute(text("CREATE UNIQUE INDEX ux_employees_employee_code ON employees (employee_code)"))
+
+        # Attendance logs extended columns
+        if not column_exists("attendance_logs", "handled"):
+            conn.execute(text("ALTER TABLE attendance_logs ADD COLUMN handled TINYINT DEFAULT 0"))
 
 
 class Base(DeclarativeBase):
@@ -92,7 +162,10 @@ class Employee(Base):
     __tablename__ = "employees"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    employee_code: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     full_name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     minio_image_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_vectorized: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
@@ -120,6 +193,7 @@ class AttendanceLog(Base):
     scan_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     status: Mapped[str] = mapped_column(Enum("SUCCESS", "FAILED", "STRANGER"))
     minio_snapshot_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    handled: Mapped[bool] = mapped_column(Boolean, default=False)
 
     employee: Mapped[Employee | None] = relationship(back_populates="logs")
 

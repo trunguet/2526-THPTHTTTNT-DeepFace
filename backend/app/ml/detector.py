@@ -28,33 +28,45 @@ class FaceDetector:
         self.device = device
         self.model = YOLO(model_path, task="pose")
 
-    def detect(self, image_bgr: np.ndarray) -> FaceDetection | None:
+    def detect_all(self, image_bgr: np.ndarray) -> list[FaceDetection]:
         results = self.model(image_bgr, verbose=False, device=self.device)
         if not results or results[0].boxes is None or len(results[0].boxes) == 0:
-            return None
+            return []
 
         boxes = results[0].boxes.xyxy.cpu().numpy()
         scores = results[0].boxes.conf.cpu().numpy()
-        best_idx = int(np.argmax(scores))
 
-        h, w = image_bgr.shape[:2]
-        x1, y1, x2, y2 = map(int, boxes[best_idx])
-        x1 = max(0, min(w - 1, x1))
-        y1 = max(0, min(h - 1, y1))
-        x2 = max(x1 + 1, min(w, x2))
-        y2 = max(y1 + 1, min(h, y2))
-
-        landmarks = None
+        keypoints = None
         if results[0].keypoints is not None:
             keypoints = results[0].keypoints.xy.cpu().numpy()
-            if len(keypoints) > best_idx and keypoints[best_idx].shape[0] >= 5:
-                landmarks = keypoints[best_idx][:5].astype(np.float32)
 
-        return FaceDetection(
-            bbox_xyxy=(x1, y1, x2, y2),
-            landmarks_5=landmarks,
-            score=float(scores[best_idx]),
-        )
+        h, w = image_bgr.shape[:2]
+        detections: list[FaceDetection] = []
+        for idx in range(len(boxes)):
+            x1, y1, x2, y2 = map(int, boxes[idx])
+            x1 = max(0, min(w - 1, x1))
+            y1 = max(0, min(h - 1, y1))
+            x2 = max(x1 + 1, min(w, x2))
+            y2 = max(y1 + 1, min(h, y2))
+
+            landmarks = None
+            if keypoints is not None and len(keypoints) > idx and keypoints[idx].shape[0] >= 5:
+                landmarks = keypoints[idx][:5].astype(np.float32)
+
+            detections.append(
+                FaceDetection(
+                    bbox_xyxy=(x1, y1, x2, y2),
+                    landmarks_5=landmarks,
+                    score=float(scores[idx]),
+                )
+            )
+
+        detections.sort(key=lambda item: item.score, reverse=True)
+        return detections
+
+    def detect(self, image_bgr: np.ndarray) -> FaceDetection | None:
+        detections = self.detect_all(image_bgr)
+        return detections[0] if detections else None
 
 
 class FaceAligner:

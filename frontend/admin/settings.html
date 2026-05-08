@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cai Dat - Admin DeepFace</title>
+    <title>Cài Đặt - Admin DeepFace</title>
     <link rel="stylesheet" href="../shared/background.css" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="./auth.js"></script>
@@ -13,28 +13,29 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="sidebar-logo">
+            <span>🎭</span>
             <span>DeepFace</span>
           </div>
         </div>
         <nav class="sidebar-nav">
           <li><a href="./index.html">Dashboard</a></li>
-          <li><a href="./add_employee.html">Them Nhan Vien</a></li>
-          <li><a href="./manage_list.html">Quan Ly Danh Sach</a></li>
-          <li><a href="./view_logs.html">Xem Nhat Ky</a></li>
-          <li><a href="./settings.html" class="active">Cai Dat</a></li>
-          <li><a href="#logout" onclick="window.DeepFaceAdminAuth?.logout?.()">Dang Xuat</a></li>
+          <li><a href="./add_employee.html">➕ Thêm Nhân Viên</a></li>
+          <li><a href="./manage_list.html">👥 Quản Lý Danh Sách</a></li>
+          <li><a href="./view_logs.html">📋 Xem Nhật Ký</a></li>
+          <li><a href="./settings.html" class="active">⚙️ Cài Đặt</a></li>
+          <li><a href="#" onclick="handleLogout()">🚪 Đăng Xuất</a></li>
         </nav>
       </aside>
 
       <div class="main-content">
         <header class="header">
-          <h1 class="header-title">Cai Dat He Thong</h1>
+          <h1 class="header-title">Cài Đặt Hệ Thống</h1>
         </header>
 
         <div class="content-area">
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Ket Noi Backend</h2>
+              <h2 class="card-title">Kết Nối Backend</h2>
             </div>
             <div style="display: grid; gap: 14px; max-width: 720px">
               <label style="color: #e0e7ff; font-weight: 600" for="api-base-url">
@@ -47,9 +48,9 @@
                 style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff"
               />
               <div style="display: flex; gap: 10px; flex-wrap: wrap">
-                <button class="btn btn-primary" id="save-api-url">Luu Cau Hinh</button>
-                <button class="btn btn-secondary" id="test-api-url">Kiem Tra Ket Noi</button>
-                <button class="btn btn-secondary" id="reset-api-url">Dung Mac Dinh</button>
+                <button class="btn btn-primary" id="save-api-url">Lưu Cấu Hình</button>
+                <button class="btn btn-secondary" id="test-api-url">Kiểm Tra Kết Nối</button>
+                <button class="btn btn-secondary" id="reset-api-url">Dùng Mặc Định</button>
               </div>
               <div id="settings-status" class="status-message" style="display: none"></div>
             </div>
@@ -62,5 +63,15 @@
     <script src="../shared/api.js"></script>
     <script src="./api.js"></script>
     <script src="./settings.js"></script>
+    <script>
+      function handleLogout() {
+        if (confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+          // Xóa token hoặc thông tin phiên làm việc
+          window.DeepFaceAdminAuth?.logout?.(); // This likely clears localStorage
+          // Chuyển hướng người dùng về trang đăng nhập
+          window.location.href = "./login.html";
+        }
+      }
+    </script>
   </body>
 </html>

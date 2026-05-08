@@ -15,14 +15,33 @@ from app.vector_store import delete_employee_vector, upsert_employee_vector
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
 
+def _resolve_employee(db: Session, identifier: str) -> Employee | None:
+    """
+    Resolve an employee by business identifier first (`employee_code`), then fall back to DB id.
+    This keeps backward compatibility for older clients that used numeric DB ids.
+    """
+    value = str(identifier or "").strip()
+    if not value:
+        return None
+
+    employee = db.query(Employee).filter(Employee.employee_code == value).first()
+    if employee is not None:
+        return employee
+
+    if value.isdigit():
+        return db.query(Employee).filter(Employee.id == int(value)).first()
+    return None
+
+
 def _employee_to_dict(employee: Employee) -> dict[str, Any]:
     image_url = f"/api/files/{employee.minio_image_path}" if employee.minio_image_path else ""
+    business_id = employee.employee_code or str(employee.id)
     return {
         "id": employee.id,
-        "employee_id": str(employee.id),
+        "employee_id": business_id,
         "full_name": employee.full_name,
-        "email": "",
-        "department": "",
+        "email": employee.email or "",
+        "department": employee.department or "",
         "image_url": image_url,
         "image_object_key": employee.minio_image_path,
         "embedding_status": "indexed" if employee.is_vectorized else "pending",
@@ -43,12 +62,13 @@ def _index_employee(employee: Employee, db: Session) -> None:
 
     image_bytes = read_bytes(employee.minio_image_path)
     vector = build_embedding(image_bytes)
+    business_id = employee.employee_code or str(employee.id)
     upsert_employee_vector(
         employee.id,
         vector,
         {
             "db_id": employee.id,
-            "employee_id": str(employee.id),
+            "employee_id": business_id,
             "full_name": employee.full_name,
         },
     )
@@ -59,6 +79,11 @@ def _index_employee(employee: Employee, db: Session) -> None:
 
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...), employee_id: str = Form(...)) -> dict[str, str]:
+    employee_id = str(employee_id or "").strip()
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="Employee ID is required")
+    if len(employee_id) > 50:
+        raise HTTPException(status_code=400, detail="Employee ID is too long (max 50 characters)")
     content = await file.read()
     try:
         validate_image(content)
@@ -72,8 +97,16 @@ async def upload_image(file: UploadFile = File(...), employee_id: str = Form(...
 @router.post("")
 def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> dict[str, Any]:
     image_object_key = payload.image_object_key or _object_key_from_url(payload.image_url)
+    business_id = str(payload.employee_id or "").strip()
+    if not business_id:
+        raise HTTPException(status_code=400, detail="Employee ID is required")
+    if len(business_id) > 50:
+        raise HTTPException(status_code=400, detail="Employee ID is too long (max 50 characters)")
     employee = Employee(
+        employee_code=business_id,
         full_name=payload.full_name,
+        email=(payload.email or "").strip() or None,
+        department=(payload.department or "").strip() or None,
         minio_image_path=image_object_key,
         is_vectorized=False,
     )
@@ -102,8 +135,8 @@ def list_employees(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
 
 
 @router.put("/{employee_id}")
-def update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Depends(get_db)) -> dict[str, Any]:
-    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+def update_employee(employee_id: str, payload: EmployeeUpdate, db: Session = Depends(get_db)) -> dict[str, Any]:
+    employee = _resolve_employee(db, employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -117,6 +150,10 @@ def update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Dep
             )
         )
         employee.full_name = payload.full_name.strip()
+    if payload.email is not None:
+        employee.email = payload.email.strip() or None
+    if payload.department is not None:
+        employee.department = payload.department.strip() or None
     employee.updated_at = now_utc()
     db.commit()
     db.refresh(employee)
@@ -132,8 +169,7 @@ def update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Dep
 
 @router.delete("/{employee_id}")
 def delete_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str, str]:
-    query = db.query(Employee)
-    employee = query.filter(Employee.id == int(employee_id)).first() if employee_id.isdigit() else None
+    employee = _resolve_employee(db, employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -163,8 +199,8 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str
 
 
 @router.post("/{employee_id}/extract-embedding")
-def extract_embedding(employee_id: int, db: Session = Depends(get_db)) -> dict[str, str]:
-    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+def extract_embedding(employee_id: str, db: Session = Depends(get_db)) -> dict[str, str]:
+    employee = _resolve_employee(db, employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -179,9 +215,7 @@ def extract_embedding(employee_id: int, db: Session = Depends(get_db)) -> dict[s
 
 @router.get("/{employee_id}/access-history")
 def access_history(employee_id: str, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    employee = None
-    if employee_id.isdigit():
-        employee = db.query(Employee).filter(Employee.id == int(employee_id)).first()
+    employee = _resolve_employee(db, employee_id)
     if employee is None:
         return []
 

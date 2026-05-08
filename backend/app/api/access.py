@@ -46,7 +46,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
 
         return {
             "status": "allowed",
-            "employee_id": str(employee.id) if employee else None,
+            "employee_id": (employee.employee_code or str(employee.id)) if employee else None,
             "employee_name": employee.full_name if employee else str(payload.get("full_name") or ""),
             "confidence": score,
             "audit_object": snapshot_key,
@@ -62,10 +62,11 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     db.add(log)
     db.commit()
     message = {
-        "spoof": "Liveness check failed",
-        "no_face": "No face detected",
-        "no_match": "Face did not match any employee",
-    }.get(result.reason, "Face verification failed")
+        "spoof": "Kiểm tra chống giả mạo thất bại",
+        "no_face": "Không phát hiện khuôn mặt",
+        "no_match": "Khuôn mặt không khớp với bất kỳ nhân viên nào",
+        "multiple_faces": "Phát hiện nhiều hơn một khuôn mặt. Vui lòng chỉ để một người trước camera.",
+    }.get(result.reason, "Xác thực khuôn mặt thất bại")
 
     return {
         "status": "stranger" if result.reason == "no_match" else "denied",

@@ -41,9 +41,12 @@ class FaceRecognitionPipeline:
 
     def embedding_for_enroll(self, image_bytes: bytes) -> EmbeddingResult:
         image_bgr = decode_image_bytes(image_bytes)
-        detection = self.detector.detect(image_bgr)
-        if detection is None:
+        detections = self.detector.detect_all(image_bgr)
+        if not detections:
             raise ValueError("No face detected in employee image")
+        if len(detections) > 1:
+            raise ValueError("Multiple faces detected in employee image")
+        detection = detections[0]
 
         aligned_face = self.aligner.align(image_bgr, detection)
         embedding = self.embedder.embed(aligned_face)
@@ -51,8 +54,8 @@ class FaceRecognitionPipeline:
 
     def verify(self, image_bytes: bytes) -> VerificationResult:
         image_bgr = decode_image_bytes(image_bytes)
-        detection = self.detector.detect(image_bgr)
-        if detection is None:
+        detections = self.detector.detect_all(image_bgr)
+        if not detections:
             return VerificationResult(
                 status="rejected",
                 reason="no_face",
@@ -61,6 +64,17 @@ class FaceRecognitionPipeline:
                 anti_spoof=None,
                 match=None,
             )
+        if len(detections) > 1:
+            return VerificationResult(
+                status="rejected",
+                reason="multiple_faces",
+                embedding=None,
+                detection=detections[0],
+                anti_spoof=None,
+                match=None,
+            )
+
+        detection = detections[0]
 
         spoof = self.anti_spoof.predict(image_bgr, detection)
         if not spoof.is_real:

@@ -229,12 +229,19 @@ class FaceScanModule {
       `;
       this.showStatus('✓ Xác thực thành công!', 'success');
     } else if (result.status === 'denied') {
+      const hintTextByReason = {
+        multiple_faces: 'Vui lòng chỉ để một người trước camera và thử lại.',
+        no_face: 'Hãy đưa khuôn mặt vào khung hình và thử lại.',
+        spoof: 'Vui lòng thử lại với khuôn mặt thật (không dùng ảnh/video).',
+      };
+      const hintText =
+        hintTextByReason[result.reason] || 'Vui lòng liên hệ quản trị viên';
       resultDiv.className = 'result-card result-error';
       resultDiv.innerHTML = `
         <div class="result-icon">✗</div>
         <h2>Xác thực thất bại</h2>
         <p class="result-message">${window.DeepFaceAPI.escapeHTML(result.message || 'Khuôn mặt không khớp với dữ liệu trong hệ thống')}</p>
-        <p class="result-hint">Vui lòng liên hệ quản trị viên</p>
+        <p class="result-hint">${window.DeepFaceAPI.escapeHTML(hintText)}</p>
       `;
       this.showStatus('❌ Xác thực thất bại!', 'error');
     } else if (result.status === 'stranger') {

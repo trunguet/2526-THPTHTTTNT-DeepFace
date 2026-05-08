@@ -37,7 +37,7 @@
     if (!value) return 'N/A';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleString('vi-VN');
+    return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   }
 
   function normalizeList(payload) {

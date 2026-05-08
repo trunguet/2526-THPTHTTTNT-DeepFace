@@ -20,7 +20,7 @@ instead, copy `.env.example` to `.env` and set `DATABASE_URL` plus
 
 Open:
 
-- Home: http://localhost:3000
+- Home:![1778238912676](image/README/1778238912676.png)
 - Admin UI: http://localhost:3001
 - User UI: http://localhost:3002
 - Backend health: http://localhost:18000/health
