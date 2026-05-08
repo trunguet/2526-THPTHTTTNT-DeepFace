@@ -10,7 +10,7 @@ from app.db import AttendanceLog, Employee, EmployeeBackup, get_db
 from app.jobs import enqueue_embedding_job
 from app.schemas import EmployeeCreate, EmployeeUpdate
 from app.storage import delete_object, read_bytes, save_bytes
-from app.vector_store import delete_employee_vector, upsert_employee_vector
+from app.vector_store import delete_employee_vector, init_collection, upsert_employee_vector
 
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
@@ -177,6 +177,51 @@ def list_unscanned_today(db: Session = Depends(get_db)) -> dict[str, Any]:
             for employee in employees
         ],
     }
+
+
+@router.post("/reindex-all")
+def reindex_all(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """
+    Enqueue embedding extraction for every employee.
+
+    Use this when recognition matches are incorrect due to stale embeddings/payloads in Qdrant.
+    """
+    employees = db.query(Employee).order_by(Employee.id.asc()).all()
+    queued = 0
+    skipped = 0
+    for employee in employees:
+        if not employee.minio_image_path:
+            skipped += 1
+            continue
+        try:
+            enqueue_embedding_job(employee.id)
+            queued += 1
+        except Exception as exc:
+            print(f"[WARN] Failed to enqueue embedding job for employee {employee.id}: {exc}", flush=True)
+            skipped += 1
+
+    return {"status": "ok", "queued": queued, "skipped": skipped, "total": len(employees)}
+
+
+@router.post("/qdrant/reset")
+def reset_qdrant_and_reindex(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """
+    Hard reset Qdrant collection and reindex all employees.
+
+    This removes old/test vectors that can cause matches returning wrong employee_code (e.g. '1').
+    """
+    from app.config import QDRANT_COLLECTION
+    from app.vector_store import get_qdrant_client
+
+    client = get_qdrant_client()
+    try:
+        client.delete_collection(collection_name=QDRANT_COLLECTION)
+    except Exception as exc:
+        print(f"[WARN] Failed to delete Qdrant collection: {exc}", flush=True)
+
+    init_collection()
+    result = reindex_all(db)
+    return {"status": "ok", "collection": QDRANT_COLLECTION, **result}
 
 
 @router.put("/{employee_id}")

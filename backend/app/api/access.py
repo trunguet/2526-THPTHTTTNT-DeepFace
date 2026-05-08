@@ -67,13 +67,29 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
             if business_id:
                 employee = _resolve_employee(db, str(business_id))
 
-        # If we cannot resolve the matched employee but the client provided an employee hint,
-        # still link the log row so "seen today" reflects the successful scan.
-        if employee is None and employee_hint is not None:
-            employee = employee_hint
+        # IMPORTANT:
+        # - attendance_logs.employee_code must always equal employees.employee_code (business key).
+        # - If the match cannot be resolved to an employee row, treat it as STRANGER.
+        #   This usually happens when Qdrant still contains stale/test vectors (e.g. payload.employee_id = "1").
+        if employee is None:
+            log = AttendanceLog(
+                employee_code=None,
+                status="STRANGER",
+                minio_snapshot_path=snapshot_key,
+            )
+            db.add(log)
+            db.commit()
+            return {
+                "status": "stranger",
+                "reason": "unknown_employee",
+                "message": "Embedding match nhưng không tìm thấy nhân viên trong CSDL. Vui lòng cleanup/reindex embeddings.",
+                "confidence": score,
+                "audit_object": snapshot_key,
+                "image_url": snapshot_url,
+            }
 
         log = AttendanceLog(
-            employee_code=(matched_code or (employee.employee_code if employee else None)),
+            employee_code=employee.employee_code,
             status="SUCCESS",
             minio_snapshot_path=snapshot_key,
         )
@@ -82,8 +98,8 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
 
         return {
             "status": "allowed",
-            "employee_id": (matched_code or (employee.employee_code if employee else None)),
-            "employee_name": employee.full_name if employee else str(payload.get("full_name") or ""),
+            "employee_id": employee.employee_code,
+            "employee_name": employee.full_name,
             "confidence": score,
             "audit_object": snapshot_key,
             "image_url": snapshot_url,
