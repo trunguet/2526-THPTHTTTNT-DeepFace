@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard - DeepFace</title>
-    <link rel="stylesheet" href="../shared/background.css" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="../shared/background.css?v=20260509-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260509-1" />
     <script src="./auth.js"></script>
   </head>
   <body>
@@ -66,11 +66,21 @@
             <h1 class="header-title">Admin Dashboard</h1>
           </div>
           <div class="header-actions">
+            <div class="header-clock" title="Giờ Việt Nam (Asia/Ho_Chi_Minh)">
+              <span class="clock-dot" aria-hidden="true"></span>
+              <div class="clock-meta">
+                <div class="clock-label">Việt Nam</div>
+                <div id="realtime-clock" class="clock-time">--:--:--</div>
+                <div id="realtime-date" class="clock-date">--/--/----</div>
+              </div>
+            </div>
             <div class="user-profile">
-              <span>👤</span>
-              <div>
-                <div id="admin-display-name" style="color: #fff; font-weight: 600; font-size: 14px">Admin User</div>
-                <div style="color: #a0aec0; font-size: 12px">Quản trị viên</div>
+              <span class="user-avatar">👤</span>
+              <div class="user-profile-meta">
+                <div class="user-profile-top">
+                  <div id="admin-display-name" class="admin-display-name">Admin User</div>
+                </div>
+                <div class="admin-role">Quản trị viên</div>
               </div>
             </div>
           </div>
@@ -204,6 +214,37 @@
         const displayName = document.getElementById('admin-display-name');
         if (displayName) {
           displayName.textContent = window.DeepFaceAdminAuth?.currentUser?.() || 'Admin User';
+        }
+
+        const clockEl = document.getElementById('realtime-clock');
+        const dateEl = document.getElementById('realtime-date');
+        if (clockEl) {
+          const formatTime = () =>
+            new Date().toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+              timeZone: 'Asia/Ho_Chi_Minh',
+            });
+
+          const formatDate = () =>
+            new Date().toLocaleDateString('vi-VN', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              timeZone: 'Asia/Ho_Chi_Minh',
+            });
+
+          const tick = () => {
+            const time = formatTime();
+            clockEl.textContent = time;
+            if (dateEl) dateEl.textContent = formatDate();
+            clockEl.setAttribute('aria-label', `Giờ Việt Nam: ${time}`);
+          };
+
+          tick();
+          setInterval(tick, 1000);
         }
         loadDashboardStats();
       });
