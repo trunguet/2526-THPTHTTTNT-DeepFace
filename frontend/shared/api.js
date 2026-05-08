@@ -2,20 +2,41 @@
   const DEFAULT_API_BASE_URL = 'http://localhost:18000';
   const API_STORAGE_KEY = 'deepface_api_base_url';
 
+  function normalizeBaseURL(rawValue) {
+    let value = String(rawValue || '').trim().replace(/\/$/, '');
+    if (!value) return DEFAULT_API_BASE_URL;
+
+    // Accept shorthand inputs from UI, e.g. ":18000" or "localhost:18000".
+    if (value.startsWith(':')) {
+      value = `http://localhost${value}`;
+    } else if (!/^https?:\/\//i.test(value)) {
+      value = `http://${value}`;
+    }
+
+    return value.replace(/\/$/, '');
+  }
+
   function getBaseURL() {
-    return (
-      window.DEEPFACE_API_BASE_URL ||
-      localStorage.getItem(API_STORAGE_KEY) ||
-      DEFAULT_API_BASE_URL
-    ).replace(/\/$/, '');
+    const raw =
+      window.DEEPFACE_API_BASE_URL || localStorage.getItem(API_STORAGE_KEY) || '';
+    const normalized = normalizeBaseURL(raw);
+
+    // Auto-heal previously saved invalid shorthand values.
+    const stored = localStorage.getItem(API_STORAGE_KEY);
+    if (stored && stored !== normalized && !window.DEEPFACE_API_BASE_URL) {
+      localStorage.setItem(API_STORAGE_KEY, normalized);
+    }
+
+    return normalized;
   }
 
   function setBaseURL(value) {
-    const normalized = String(value || '').trim().replace(/\/$/, '');
-    if (!normalized) {
+    const raw = String(value || '').trim();
+    if (!raw) {
       localStorage.removeItem(API_STORAGE_KEY);
       return DEFAULT_API_BASE_URL;
     }
+    const normalized = normalizeBaseURL(raw);
     localStorage.setItem(API_STORAGE_KEY, normalized);
     return normalized;
   }

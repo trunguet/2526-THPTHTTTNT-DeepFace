@@ -118,6 +118,9 @@ class AdminSettingsModule {
       if (this.unscannedDate) this.unscannedDate.textContent = String(payload?.date || '--');
 
       this.renderUnscanned(items);
+      // Make it obvious the request finished (useful when browser caches old scripts).
+      this.showUnscanned('Đã cập nhật danh sách.', 'success');
+      setTimeout(() => this.hideUnscanned(), 1500);
     } catch (error) {
       if (this.unscannedCount) this.unscannedCount.textContent = '--';
       if (this.unscannedDate) this.unscannedDate.textContent = '--';
