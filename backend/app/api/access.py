@@ -7,6 +7,7 @@ from app.ai import decode_base64_image, validate_image, verify_liveness_and_embe
 from app.db import AttendanceLog, Employee, get_db
 from app.schemas import VerifyFaceRequest
 from app.storage import save_bytes
+from app.cache import bump_version
 
 
 router = APIRouter(prefix="/api/access", tags=["access"])
@@ -52,6 +53,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         )
         db.add(log)
         db.commit()
+        bump_version("access_logs")
         return {
             "status": "denied",
             "reason": "challenge_failed",
@@ -103,6 +105,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
             )
             db.add(log)
             db.commit()
+            bump_version("access_logs")
             return {
                 "status": "stranger",
                 "reason": "unknown_employee",
@@ -119,6 +122,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         )
         db.add(log)
         db.commit()
+        bump_version("access_logs")
 
         return {
             "status": "allowed",
@@ -143,6 +147,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     )
     db.add(log)
     db.commit()
+    bump_version("access_logs")
     message = {
         "spoof": "Kiểm tra chống giả mạo thất bại",
         "minifas_low_score": "MiniFAS score thấp, vui lòng thử lại",

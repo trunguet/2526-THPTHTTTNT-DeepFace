@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from app.db import AttendanceLog, get_db
 from app.storage import object_url
 from app.security import require_admin
+from app.cache import get_json, set_json, versioned_key
+from app.config import CACHE_LOGS_TTL_SECONDS
+from app.cache import bump_version
 
 
 router = APIRouter(prefix="/api/access-logs", tags=["access-logs"], dependencies=[Depends(require_admin)])
@@ -35,12 +38,22 @@ def _log_to_dict(log: AttendanceLog) -> dict[str, Any]:
 
 @router.get("")
 def list_logs(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    cache_key = versioned_key("access_logs", "list")
+    cached = get_json(cache_key)
+    if isinstance(cached, list):
+        return cached
     rows = db.query(AttendanceLog).order_by(AttendanceLog.scan_time.desc()).limit(200).all()
-    return [_log_to_dict(row) for row in rows]
+    result = [_log_to_dict(row) for row in rows]
+    set_json(cache_key, result, ttl_seconds=CACHE_LOGS_TTL_SECONDS)
+    return result
 
 
 @router.get("/alerts")
 def list_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    cache_key = versioned_key("access_logs", "alerts")
+    cached = get_json(cache_key)
+    if isinstance(cached, list):
+        return cached
     rows = (
         db.query(AttendanceLog)
         .filter(AttendanceLog.status == "STRANGER")
@@ -49,7 +62,7 @@ def list_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
         .limit(50)
         .all()
     )
-    return [
+    result = [
         {
             "id": row.id,
             "timestamp": row.scan_time,
@@ -59,6 +72,8 @@ def list_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
+    set_json(cache_key, result, ttl_seconds=CACHE_LOGS_TTL_SECONDS)
+    return result
 
 
 @router.post("/alerts/{alert_id}/dismiss")
@@ -68,4 +83,5 @@ def dismiss_alert(alert_id: int, db: Session = Depends(get_db)) -> dict[str, str
         return {"status": "ok"}
     row.handled = True
     db.commit()
+    bump_version("access_logs")
     return {"status": "ok"}

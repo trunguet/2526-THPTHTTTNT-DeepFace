@@ -12,6 +12,8 @@ from app.schemas import EmployeeCreate, EmployeeUpdate
 from app.storage import delete_object, read_bytes, save_bytes
 from app.vector_store import delete_employee_vector, init_collection, upsert_employee_vector
 from app.security import require_admin
+from app.cache import bump_version, get_json, set_json, versioned_key
+from app.config import CACHE_EMPLOYEES_TTL_SECONDS
 
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
@@ -92,6 +94,7 @@ async def upload_image(file: UploadFile = File(...), employee_id: str = Form(...
         raise HTTPException(status_code=400, detail=f"Invalid image file: {exc}")
 
     object_key, image_url = save_bytes(f"employees/{employee_id}", content, file.content_type or "image/jpeg")
+    bump_version("employees")
     return {"image_url": image_url, "image_object_key": object_key}
 
 
@@ -124,17 +127,28 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> d
     except Exception as exc:
         print(f"[WARN] Failed to enqueue embedding job for employee {employee.id}: {exc}", flush=True)
 
+    bump_version("employees")
     return _employee_to_dict(employee)
 
 
 @router.get("", dependencies=[Depends(require_admin)])
 def list_employees(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    cache_key = versioned_key("employees", "list")
+    cached = get_json(cache_key)
+    if isinstance(cached, list):
+        return cached
     employees = db.query(Employee).order_by(Employee.id.desc()).all()
-    return [_employee_to_dict(employee) for employee in employees]
+    result = [_employee_to_dict(employee) for employee in employees]
+    set_json(cache_key, result, ttl_seconds=CACHE_EMPLOYEES_TTL_SECONDS)
+    return result
 
 
 @router.get("/unscanned-today", dependencies=[Depends(require_admin)])
 def list_unscanned_today(db: Session = Depends(get_db)) -> dict[str, Any]:
+    cache_key = versioned_key("employees", "unscanned_today")
+    cached = get_json(cache_key)
+    if isinstance(cached, dict) and "items" in cached:
+        return cached
     """
     Return employees that the system has not "seen" today, i.e. there is no
     attendance log row linked to the employee for today's Vietnam-local date.
@@ -163,7 +177,7 @@ def list_unscanned_today(db: Session = Depends(get_db)) -> dict[str, Any]:
     )
 
     today = db.query(func.curdate()).scalar()
-    return {
+    result = {
         "date": str(today) if today is not None else "",
         "count": len(employees),
         "items": [
@@ -178,6 +192,8 @@ def list_unscanned_today(db: Session = Depends(get_db)) -> dict[str, Any]:
             for employee in employees
         ],
     }
+    set_json(cache_key, result, ttl_seconds=CACHE_EMPLOYEES_TTL_SECONDS)
+    return result
 
 
 @router.post("/reindex-all", dependencies=[Depends(require_admin)])
@@ -201,6 +217,7 @@ def reindex_all(db: Session = Depends(get_db)) -> dict[str, Any]:
             print(f"[WARN] Failed to enqueue embedding job for employee {employee.id}: {exc}", flush=True)
             skipped += 1
 
+    bump_version("employees")
     return {"status": "ok", "queued": queued, "skipped": skipped, "total": len(employees)}
 
 
@@ -222,6 +239,7 @@ def reset_qdrant_and_reindex(db: Session = Depends(get_db)) -> dict[str, Any]:
 
     init_collection()
     result = reindex_all(db)
+    bump_version("employees")
     return {"status": "ok", "collection": QDRANT_COLLECTION, **result}
 
 
@@ -254,6 +272,7 @@ def update_employee(employee_id: str, payload: EmployeeUpdate, db: Session = Dep
         except Exception as exc:
             print(f"[WARN] Failed to refresh Qdrant payload for employee {employee.id}: {exc}", flush=True)
 
+    bump_version("employees")
     return _employee_to_dict(employee)
 
 
@@ -285,6 +304,7 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str
     except Exception as exc:
         print(f"[WARN] Failed to delete employee image {object_key}: {exc}", flush=True)
 
+    bump_version("employees")
     return {"status": "ok"}
 
 
@@ -300,6 +320,7 @@ def extract_embedding(employee_id: str, db: Session = Depends(get_db)) -> dict[s
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Embedding extraction failed: {exc}")
+    bump_version("employees")
     return {"status": "ok"}
 
 

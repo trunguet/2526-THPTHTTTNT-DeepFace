@@ -47,6 +47,16 @@ PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:18000")
 ADMIN_AUTH_SECRET = os.getenv("ADMIN_AUTH_SECRET", "dev-secret-change-me")
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "86400"))
 
+# Cache (multi-layer)
+CACHE_REDIS_ENABLED = os.getenv("CACHE_REDIS_ENABLED", "true").lower() in {"1", "true", "yes"}
+CACHE_L1_MAX_ENTRIES = int(os.getenv("CACHE_L1_MAX_ENTRIES", "512"))
+# Cache TTLs should be larger than typical request latency, otherwise entries may expire
+# before you can observe or benefit from them (e.g. access logs payload can be large).
+CACHE_EMPLOYEES_TTL_SECONDS = int(os.getenv("CACHE_EMPLOYEES_TTL_SECONDS", "60"))
+CACHE_LOGS_TTL_SECONDS = int(os.getenv("CACHE_LOGS_TTL_SECONDS", "60"))
+# Optional: cache verify result by image hash (seconds). Keep low to avoid replay risks.
+CACHE_VERIFY_TTL_SECONDS = int(os.getenv("CACHE_VERIFY_TTL_SECONDS", "0"))
+
 # Quality gates (heuristic rejects) to reduce false accepts.
 # All brightness thresholds use grayscale mean in range [0..255].
 QUALITY_MIN_FRAME_BRIGHTNESS = float(os.getenv("QUALITY_MIN_FRAME_BRIGHTNESS", "35"))
