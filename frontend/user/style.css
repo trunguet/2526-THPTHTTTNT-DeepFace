@@ -342,6 +342,26 @@ body {
   justify-content: center !important;
 }
 
+.dropdown-content {
+  display: none !important;
+  /* This makes the dropdown part of the layout flow, pushing content down. */
+  /* It is no longer a floating panel. */
+  width: 100% !important;
+  flex-direction: column !important;
+  gap: 14px !important; /* Match the parent container's gap for consistency. */
+}
+
+.dropdown-content.show {
+  display: flex !important;
+  animation: slideDown 0.3s ease-out !important;
+}
+
+.dropdown-content .btn {
+  padding: 8px 8px !important;
+  font-size: 13px !important;
+  min-height: auto !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* BUTTONS */
 /* ═══════════════════════════════════════════════════════════════════════ */
@@ -452,6 +472,17 @@ body {
 
 .btn-warning:hover {
   background: rgba(245, 158, 11, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: var(--error-light) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
   transform: translateY(-1px) !important;
 }
 

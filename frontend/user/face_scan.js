@@ -12,6 +12,8 @@ class FaceScanModule {
     this.startBtn = document.getElementById('start-btn');
     this.stopBtn = document.getElementById('stop-btn');
     this.autoScanBtn = document.getElementById('auto-scan-btn');
+    this.scanOptionsBtn = document.getElementById('scan-options-btn');
+    this.scanOptionsContent = document.getElementById('scan-options-content');
     this.statusDisplay = document.getElementById('status-display');
     this.resultContainer = document.getElementById('result-container');
 
@@ -37,6 +39,22 @@ class FaceScanModule {
     }
     if (this.autoScanBtn) {
       this.autoScanBtn.addEventListener('click', () => this.toggleAutoScan());
+    }
+    if (this.scanOptionsBtn) {
+      this.scanOptionsBtn.addEventListener('click', (e) => {
+        // Prevent the window click listener from closing the dropdown immediately
+        e.stopPropagation();
+        this.toggleScanOptions();
+      });
+    }
+    // Close dropdown if clicked outside
+    window.addEventListener('click', () => {
+      if (this.scanOptionsContent?.classList.contains('show')) {
+        this.toggleScanOptions(false);
+      }
+    });
+    if (this.scanOptionsContent) {
+      this.scanOptionsContent.addEventListener('click', (e) => e.stopPropagation());
     }
     if (this.videoElement) {
       this.videoElement.addEventListener('loadedmetadata', () => this.markCameraReady());
@@ -119,6 +137,11 @@ class FaceScanModule {
    * Capture frame and send for verification
    */
   async captureAndVerify(isAuto = false) {
+    // Close dropdown on manual capture
+    if (!isAuto) {
+      this.toggleScanOptions(false);
+    }
+
     if (!this.videoElement || !this.isRunning) { // Check if camera is running
       this.showStatus('❌ Vui lòng khởi động camera trước', 'error');
       return;
@@ -216,9 +239,22 @@ class FaceScanModule {
    */
   toggleAutoScan() {
     this.isAutoScanning = !this.isAutoScanning;
+    // If we just stopped auto-scanning, close the dropdown.
+    if (!this.isAutoScanning) {
+      this.toggleScanOptions(false);
+    }
     this.updateButtonStates();
     this.showStatus(this.isAutoScanning ? '🔍 Đã bật quét tự động...' : '✓ Đã tắt quét tự động', 'info');
     this.continuousCapture();
+  }
+
+  /**
+   * Toggle scan options dropdown
+   */
+  toggleScanOptions(forceState) {
+    if (!this.scanOptionsContent) return;
+    const shouldShow = forceState ?? !this.scanOptionsContent.classList.contains('show');
+    this.scanOptionsContent.classList.toggle('show', shouldShow);
   }
 
   /**
@@ -344,17 +380,23 @@ class FaceScanModule {
     if (this.stopBtn) {
       this.stopBtn.disabled = !cameraReady;
     }
+    if (this.scanOptionsBtn) {
+      this.scanOptionsBtn.disabled = !cameraReady;
+    }
+    // Buttons inside the dropdown
     if (this.captureBtn) {
       this.captureBtn.disabled = !cameraReady || this.isProcessing || this.isAutoScanning;
     }
     if (this.autoScanBtn) {
       this.autoScanBtn.disabled = !cameraReady || this.isProcessing;
       if (this.isAutoScanning) {
-        this.autoScanBtn.innerHTML = '<span>⏳</span> <span>Dừng Quét</span>';
+        this.autoScanBtn.innerHTML = '<span>⏹️</span> <span>Dừng Quét</span>';
         this.autoScanBtn.classList.add('active');
+        this.autoScanBtn.classList.replace('btn-warning', 'btn-danger');
       } else {
         this.autoScanBtn.innerHTML = '<span>🔄</span> <span>Tự Động Quét</span>';
         this.autoScanBtn.classList.remove('active');
+        this.autoScanBtn.classList.replace('btn-danger', 'btn-warning');
       }
     }
   }
