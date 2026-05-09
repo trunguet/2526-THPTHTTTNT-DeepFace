@@ -36,9 +36,38 @@ def process_embedding_job(db: Session, employee_id: int) -> None:
 
 
 def main() -> None:
-    init_db()
-    init_bucket()
-    init_collection()
+    def env_bool(name: str, default: bool) -> bool:
+        import os
+
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+    strict_startup = env_bool("STRICT_STARTUP", True)
+    init_external = env_bool("INIT_EXTERNAL_DEPENDENCIES", True)
+
+    try:
+        init_db(retries=30 if strict_startup else 3)
+    except Exception as exc:
+        print(f"Worker init_db failed: {exc}", flush=True)
+        if strict_startup:
+            raise
+
+    if init_external:
+        try:
+            init_bucket(retries=20 if strict_startup else 3)
+        except Exception as exc:
+            print(f"Worker init_bucket failed: {exc}", flush=True)
+            if strict_startup:
+                raise
+
+        try:
+            init_collection(retries=20 if strict_startup else 3)
+        except Exception as exc:
+            print(f"Worker init_collection failed: {exc}", flush=True)
+            if strict_startup:
+                raise
     redis_client = get_redis_client()
     print("Embedding worker started", flush=True)
 

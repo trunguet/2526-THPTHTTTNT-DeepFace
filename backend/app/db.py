@@ -14,7 +14,13 @@ from app.config import DATABASE_SSL, DATABASE_URL
 def _connect_args() -> dict:
     # Ensure all MySQL sessions use Vietnam timezone (+07:00) for TIMESTAMP
     # conversion and functions like NOW()/CURRENT_TIMESTAMP.
-    args: dict = {"init_command": "SET SESSION time_zone = '+07:00'"}
+    # Add timeouts to avoid hanging during startup when DB is unreachable.
+    args: dict = {
+        "init_command": "SET SESSION time_zone = '+07:00'",
+        "connect_timeout": 5,
+        "read_timeout": 30,
+        "write_timeout": 30,
+    }
     if DATABASE_SSL:
         args["ssl"] = {"check_hostname": False}
     return args

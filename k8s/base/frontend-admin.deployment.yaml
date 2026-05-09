@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deepface-frontend-admin
+  namespace: deepface
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deepface-frontend-admin
+  template:
+    metadata:
+      labels:
+        app: deepface-frontend-admin
+    spec:
+      containers:
+        - name: nginx
+          image: deepface_frontend_admin:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+

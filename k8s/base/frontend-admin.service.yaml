@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: deepface-frontend-admin
+  namespace: deepface
+spec:
+  selector:
+    app: deepface-frontend-admin
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+

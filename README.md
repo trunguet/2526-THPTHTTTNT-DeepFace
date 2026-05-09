@@ -1,108 +1,381 @@
-# DeepFace Docker Run Guide
+﻿# DeepFace UET – Face Access Control System
 
-## Requirements
+Hệ thống nhận diện khuôn mặt thời gian thực kết hợp anti-spoofing phục vụ bài toán:
 
-- Docker Desktop is installed and running.
-- Docker Desktop is using the Linux engine.
+* Điểm danh nhân viên / sinh viên
+* Kiểm soát ra vào
+* Quản lý lịch sử nhận diện
+* Quản trị người dùng qua giao diện web
 
-## Run
+Dự án được xây dựng theo hướng triển khai thực tế với:
 
-From the repository root:
+* FastAPI Backend
+* Frontend tách riêng (Home / User / Admin)
+* Redis cache
+* Qdrant vector database
+* MinIO object storage
+* Kubernetes deployment
+* Docker Compose local development
 
-```bash
+---
+
+# 1. Kiến trúc hệ thống
+
+```text
+Camera/Input
+      ↓
+YOLOv8 Face Detection
+      ↓
+MiniFAS Anti-Spoof
+      ↓
+ArcFace Embedding Extraction
+      ↓
+Qdrant Vector Search
+      ↓
+FastAPI Backend
+      ↓
+Frontend (Admin / User / Home)
+```
+
+---
+
+# 2. Công nghệ sử dụng
+
+| Thành phần       | Công nghệ           |
+| ---------------- | ------------------- |
+| Backend API      | FastAPI             |
+| Frontend         | HTML/CSS/JS + Nginx |
+| Face Detection   | YOLOv8-Face         |
+| Face Recognition | ArcFace             |
+| Anti-Spoofing    | MiniFASNet          |
+| Vector Database  | Qdrant              |
+| Cache            | Redis               |
+| Object Storage   | MinIO               |
+| Containerization | Docker              |
+| Orchestration    | Kubernetes          |
+
+---
+
+# 3. Cấu trúc thư mục
+
+```text
+backend/                    # FastAPI backend
+frontend/                   # Frontend applications
+├── admin/                  # Admin UI
+├── user/                   # User UI
+└── home/                   # Landing page
+
+k8s/                        # Kubernetes manifests
+├── base/
+└── overlays/
+
+models/                     # AI model weights
+├── detection/
+├── anti_spoof/
+└── extraction/
+
+backup_service/             # Backup service
+
+scripts/                    # Utility scripts
+```
+
+---
+
+# 4. Yêu cầu môi trường
+
+## Windows
+
+Khuyến nghị:
+
+* Windows 10/11
+* Docker Desktop
+* Kubernetes enabled
+* Python 3.10
+* PowerShell
+
+---
+
+# 5. Tạo môi trường Python (venv)
+
+## 5.1 Kiểm tra Python
+
+```powershell
+py -3.10 --version
+```
+
+## 5.2 Tạo venv
+
+```powershell
+py -3.10 -m venv .venv
+```
+
+## 5.3 Activate
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+## 5.4 Cài dependencies
+
+```powershell
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Nếu backend có requirements riêng:
+
+```powershell
+pip install -r backend/requirements.txt
+```
+
+---
+
+# 6. Chạy bằng Docker Compose
+
+## 6.1 Build + Run
+
+```powershell
 docker compose up --build -d
 ```
 
-The default Docker setup is self-contained and uses the local `mysql` service in
-`docker-compose.yml`. A `.env` file is optional. If you want to use TiDB Cloud
-instead, copy `.env.example` to `.env` and set `DATABASE_URL` plus
-`DATABASE_SSL=true`.
+## 6.2 Truy cập hệ thống
 
+| Service          | URL                                                                  |
+| ---------------- | -------------------------------------------------------------------- |
+| Home             | [http://localhost:3000](http://localhost:3000)                       |
+| Admin UI         | [http://localhost:3001](http://localhost:3001)                       |
+| User UI          | [http://localhost:3002](http://localhost:3002)                       |
+| Backend Health   | [http://localhost:18000/health](http://localhost:18000/health)       |
+| MinIO Console    | [http://localhost:19001](http://localhost:19001)                     |
+| Qdrant Dashboard | [http://localhost:16333/dashboard](http://localhost:16333/dashboard) |
 
-- Home: http://localhost:3000
-- Admin UI: http://localhost:3001
-- User UI: http://localhost:3002
-- Backend health: http://localhost:18000/health
-- MinIO console: http://localhost:19001
-- Qdrant dashboard: http://localhost:16333/dashboard
-- Redis: localhost:16379
+---
 
-MinIO login:
+# 7. Chạy bằng Kubernetes
 
-- Username: `admin`
-- Password: `password123`
+## 7.1 Bật Kubernetes trong Docker Desktop
 
-## Stop
+Docker Desktop → Settings → Kubernetes → Enable Kubernetes
 
-```bash
-docker compose down
+Kiểm tra:
+
+```powershell
+kubectl config use-context docker-desktop
+kubectl cluster-info
 ```
 
-To remove runtime data stored in Docker volumes:
+---
 
-```bash
-docker compose down -v
+## 7.2 Build image local
+
+```powershell
+docker build -t deepface_backend:latest -f backend/Dockerfile .
+
+docker build -t deepface_frontend_home:latest -f frontend/home/Dockerfile .
+
+docker build -t deepface_frontend_user:latest -f frontend/user/Dockerfile .
+
+docker build -t deepface_frontend_admin:latest -f frontend/admin/Dockerfile .
 ```
 
-## Frontend Scope
+---
 
-This repository currently includes improved static frontends for:
+## 7.3 Tạo namespace
 
-- Home: role selector for Admin and Nhân Viên.
-- Admin: local account registration/login, dashboard, employee list, add employee form, access logs, settings.
-- User: camera scan, access history, CSV export, demo login.
+```powershell
+kubectl apply -f k8s/base/namespace.yaml
+```
 
-Detailed frontend review and next-step checklist: [docs/frontend-review.md](docs/frontend-review.md).
+---
 
-## Backend Scope
+## 7.4 Tạo Kubernetes Secret
 
-The backend now includes an end-to-end MVP for the face access-control use case:
+```powershell
+kubectl -n deepface create secret generic deepface-secrets `
+  --from-literal=ADMIN_AUTH_SECRET='change-me' `
+  --from-literal=DATABASE_URL='mysql+pymysql://USER:PASSWORD@HOST:PORT/DB?charset=utf8mb4' `
+  --from-literal=MINIO_ACCESS_KEY='admin' `
+  --from-literal=MINIO_SECRET_KEY='password123' `
+  --dry-run=client -o yaml | kubectl apply -f -
+```
 
-- FastAPI REST API.
-- MySQL by default for employees and access logs, with optional TiDB Cloud via
-  `.env`.
-- MinIO for employee images and verification snapshots.
-- Qdrant for face/image vectors.
-- Redis queue plus `worker` service for background embedding jobs.
-- Production face pipeline using YOLOv8-Face detection, 5-point alignment,
-  MiniFASNet anti-spoofing, ArcFace 512-dimensional embeddings, and Qdrant
-  cosine matching.
+---
 
-Core flow:
+## 7.5 Deploy lên Kubernetes
 
-1. Admin uploads an employee face image.
-2. Backend stores the image in MinIO.
-3. Admin creates the employee record.
-4. Backend queues an embedding job.
-5. Worker reads the image, builds the vector, and indexes it into Qdrant.
-6. User captures a camera frame.
-7. Backend saves the snapshot in MinIO, searches Qdrant, writes an access log, and returns `allowed` or `stranger`.
+```powershell
+kubectl apply -k k8s/overlays/local
+```
 
-Important API endpoints:
+Kiểm tra:
 
-- `POST /api/employees/upload-image`
-- `POST /api/employees`
-- `POST /api/employees/{id}/extract-embedding`
-- `GET /api/employees`
-- `DELETE /api/employees/{id}`
-- `POST /api/access/verify-face`
-- `GET /api/access-logs`
-- `GET /api/access-logs/alerts`
-- `POST /api/access-logs/alerts/{id}/dismiss`
-- `GET /api/employees/{employee_id}/access-history`
-# Chạy luồng Backup:
-- docker compose run --rm backup
+```powershell
+kubectl get pods -n deepface
+kubectl get svc -n deepface
+```
 
-## Notes
+---
 
-This is a functional Docker MVP for the course project. Runtime database
-settings can be overridden from `.env`, but a fresh clone works with the local
-MySQL container by default. The backend image packages the local YOLOv8-Face,
-MiniFASNet, and ArcFace weights. After switching model pipelines or changing
-thresholds, re-run employee embedding extraction so Qdrant contains vectors
-from the same ArcFace pipeline used during verification.
+## 7.6 Port Forward (Khuyến nghị trên Windows)
 
-Database timestamps:
+### Home
 
-- The backend sets MySQL `time_zone` to `+07:00` for each connection.
-- `created_at`/`updated_at`/`scan_time` are generated by MySQL with `CURRENT_TIMESTAMP` (Vietnam local time).
+```powershell
+kubectl -n deepface port-forward svc/deepface-frontend-home 8080:80
+```
+
+### User UI
+
+```powershell
+kubectl -n deepface port-forward svc/deepface-frontend-user 8081:80
+```
+
+### Admin UI
+
+```powershell
+kubectl -n deepface port-forward svc/deepface-frontend-admin 8082:80
+```
+
+### Backend API
+
+```powershell
+kubectl -n deepface port-forward svc/deepface-backend 18000:8000
+```
+
+---
+
+## 7.7 URL truy cập
+
+| Service        | URL                                                            |
+| -------------- | -------------------------------------------------------------- |
+| Home           | [http://127.0.0.1:8080](http://127.0.0.1:8080)                 |
+| User UI        | [http://127.0.0.1:8081](http://127.0.0.1:8081)                 |
+| Admin UI       | [http://127.0.0.1:8082](http://127.0.0.1:8082)                 |
+| Backend Health | [http://127.0.0.1:18000/health](http://127.0.0.1:18000/health) |
+
+---
+
+# 8. Kiểm tra logs
+
+## Backend
+
+```powershell
+kubectl logs -f -n deepface deploy/deepface-backend
+```
+
+## Worker
+
+```powershell
+kubectl logs -f -n deepface deploy/deepface-worker
+```
+
+---
+
+# 9. Restart deployment
+
+## Backend
+
+```powershell
+kubectl rollout restart deployment/deepface-backend -n deepface
+```
+
+## Frontend Admin
+
+```powershell
+kubectl rollout restart deployment/deepface-frontend-admin -n deepface
+```
+
+---
+
+# 10. Các thành phần AI
+
+## 10.1 Face Detection
+
+Sử dụng YOLOv8-Face để phát hiện khuôn mặt trong ảnh/video.
+
+## 10.2 Anti-Spoofing
+
+Sử dụng MiniFASNet để phát hiện:
+
+* Ảnh in
+* Replay attack
+* Fake camera
+* Màn hình điện thoại
+
+## 10.3 Face Recognition
+
+Sử dụng ArcFace embedding.
+
+Embedding được lưu trong Qdrant để truy vấn vector similarity.
+
+---
+
+# 11. Troubleshooting
+
+## 11.1 Port không truy cập được
+
+Kiểm tra:
+
+```powershell
+kubectl get pods -n deepface
+kubectl get svc -n deepface
+```
+
+Dùng port-forward thay vì NodePort trên Windows.
+
+---
+
+## 11.2 Token admin bị lỗi
+
+Mở DevTools Console:
+
+```javascript
+localStorage.removeItem('auth_token');
+localStorage.removeItem('admin_username');
+location.reload();
+```
+
+---
+
+## 11.3 GitHub reject file > 100MB
+
+Không commit model weights.
+
+Thêm vào `.gitignore`:
+
+```gitignore
+model_cache/
+models/
+*.h5
+*.pth
+*.pt
+```
+
+---
+
+# 12. Thành viên phát triển
+
+| Vai trò        | Nhiệm vụ             |
+| -------------- | -------------------- |
+| Backend        | API + AI Pipeline    |
+| Frontend Admin | Quản trị nhân viên   |
+| Frontend User  | Giao diện người dùng |
+| DevOps         | Docker + Kubernetes  |
+
+---
+
+# 13. Định hướng mở rộng
+
+* HTTPS + Ingress NGINX
+* CI/CD GitHub Actions
+* GPU inference
+* Multi-camera streaming
+* Real-time WebSocket
+* Helm deployment
+* Monitoring với Prometheus + Grafana
+
+---
+
+# 14. License
+
+Dự án phục vụ mục đích học tập và nghiên cứu tại UET.

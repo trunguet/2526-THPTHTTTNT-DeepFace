@@ -1,65 +1,30 @@
-# =========================
-# Backup folders
-# =========================
+# Runtime / generated artifacts (safe to delete)
 backups/
+model_cache/
+database/minio_data/
+allfiles.txt
+docker-compose.dev.yml
 
-# =========================
-# Python cache / compiled files
-# =========================
-__pycache__/
-*.py[cod]
-*$py.class
+# Uploads & results
+backend/app/uploads/
+uploads/
+result_*.jpg
 
-# =========================
-# Python virtual environments
-# =========================
+# Python
+**/__pycache__/
+*.pyc
 .venv/
 venv/
 ENV/
 env/
 
-# =========================
-# Environment files
-# =========================
-.env
-.env.*
-!.env.example
-
-# =========================
-# Node.js dependencies / logs
-# =========================
+# Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
-# =========================
-# Project temporary files
-# =========================
-uploads/
-result_*.jpg
-*.log
+# Local environment files
+.env
 
-# =========================
-# Model weights / model cache
-# Không push model nặng lên GitHub
-# =========================
-model_cache/
-models/**/*.h5
-models/**/*.pth
-models/**/*.pt
-models/**/*.onnx
-models/**/*.bin
-*.h5
-*.pth
-*.pt
-*.onnx
-*.bin
-
-# =========================
-# Docker runtime data
-# =========================
-data/minio/
-data/qdrant/
-data/redis/
+# Docker bind/volume leftovers (if any)
+data/

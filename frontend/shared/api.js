@@ -6,6 +6,14 @@
     let value = String(rawValue || '').trim().replace(/\/$/, '');
     if (!value) return DEFAULT_API_BASE_URL;
 
+    // Allow same-origin calls in production behind Ingress/Reverse proxy.
+    // Examples:
+    // - "/"  -> ""   (so fetch(`${base}${path}`) becomes `${path}`)
+    // - "/api-proxy" -> "/api-proxy"
+    if (value.startsWith('/')) {
+      return value === '/' ? '' : value.replace(/\/$/, '');
+    }
+
     // Accept shorthand inputs from UI, e.g. ":18000" or "localhost:18000".
     if (value.startsWith(':')) {
       value = `http://localhost${value}`;
@@ -126,6 +134,7 @@
         body: JSON.stringify(body ?? {}),
       }),
     delete: (path, options) => request(path, { ...options, method: 'DELETE' }),
-    health: () => request('/health'),
+    // In Ingress deployments we route API under /api, so health lives at /api/health.
+    health: () => request('/api/health'),
   };
 })();

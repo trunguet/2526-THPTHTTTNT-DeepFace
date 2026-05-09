@@ -46,16 +46,60 @@ def health_check() -> dict:
 	return {"status": "ok"}
 
 
+@app.get("/api/health")
+def api_health_check() -> dict:
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def startup() -> None:
-    init_db()
-    init_bucket()
-    init_collection()
+    def env_bool(name: str, default: bool) -> bool:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
-    # Ép hệ thống nạp trước 3 model (YOLO, MiniFASNet, ArcFace) vào RAM một cách an toàn
-    print("Đang khởi tạo trước FaceRecognitionPipeline...")
-    get_face_pipeline()
-    print("Khởi tạo AI Model thành công!")
+    # In Kubernetes, external dependencies or model preloading can be slow.
+    # Set STRICT_STARTUP=false to let the API start even if some init steps fail.
+    strict_startup = env_bool("STRICT_STARTUP", True)
+    init_external = env_bool("INIT_EXTERNAL_DEPENDENCIES", True)
+    preload_models = env_bool("PRELOAD_MODELS", True)
+
+    db_retries = 30 if strict_startup else 3
+    external_retries = 20 if strict_startup else 3
+
+    try:
+        init_db(retries=db_retries)
+    except Exception as exc:
+        print(f"Startup init_db failed: {exc}", flush=True)
+        if strict_startup:
+            raise
+
+    if init_external:
+        try:
+            init_bucket(retries=external_retries)
+        except Exception as exc:
+            print(f"Startup init_bucket failed: {exc}", flush=True)
+            if strict_startup:
+                raise
+
+        try:
+            init_collection(retries=external_retries)
+        except Exception as exc:
+            print(f"Startup init_collection failed: {exc}", flush=True)
+            if strict_startup:
+                raise
+
+    if preload_models:
+        print("Preloading FaceRecognitionPipeline...", flush=True)
+        try:
+            get_face_pipeline()
+        except Exception as exc:
+            print(f"Startup model preload failed: {exc}", flush=True)
+            if strict_startup:
+                raise
+        else:
+            print("AI models preloaded.", flush=True)
 
 @app.get("/api/files/{object_key:path}")
 def read_file(object_key: str) -> Response:

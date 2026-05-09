@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deepface-config
+  namespace: deepface
+data:
+  # When using Ingress, PUBLIC_API_BASE_URL should be the externally reachable base.
+  # We route /api to backend on the same host.
+  PUBLIC_API_BASE_URL: "http://deepface.local"
+
