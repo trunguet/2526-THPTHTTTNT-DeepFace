@@ -35,7 +35,7 @@
             <div class="scan-container">
               <!-- Video Stream -->
               <div>
-                <div class="video-container">
+                <div class="video-container" id="video-container">
                   <video id="video-stream" width="640" height="480" autoplay></video>
                   <canvas id="canvas-stream" style="display: none"></canvas>
                 </div>
@@ -57,6 +57,13 @@
                     <button class="btn btn-warning" id="capture-btn" disabled>
                       <span>📸</span>
                       <span>Chụp & Xác Thực</span>
+                    </button>
+                  </div>
+
+                  <div class="control-group">
+                    <button class="btn btn-info" id="auto-scan-btn" disabled>
+                      <span>🔄</span>
+                      <span>Tự Động Quét</span>
                     </button>
                   </div>
 

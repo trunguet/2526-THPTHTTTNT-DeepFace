@@ -6,10 +6,12 @@
 class FaceScanModule {
   constructor() {
     this.videoElement = document.getElementById('video-stream');
+    this.videoContainer = document.getElementById('video-container');
     this.canvasElement = document.getElementById('canvas-stream');
     this.captureBtn = document.getElementById('capture-btn');
     this.startBtn = document.getElementById('start-btn');
     this.stopBtn = document.getElementById('stop-btn');
+    this.autoScanBtn = document.getElementById('auto-scan-btn');
     this.statusDisplay = document.getElementById('status-display');
     this.resultContainer = document.getElementById('result-container');
 
@@ -17,6 +19,8 @@ class FaceScanModule {
     this.mediaStream = null;
     this.isRunning = false;
     this.isProcessing = false;
+    this.isAutoScanning = false;
+    this.autoScanTimeoutId = null;
 
     this.init();
   }
@@ -31,13 +35,17 @@ class FaceScanModule {
     if (this.captureBtn) {
       this.captureBtn.addEventListener('click', () => this.captureAndVerify());
     }
+    if (this.autoScanBtn) {
+      this.autoScanBtn.addEventListener('click', () => this.toggleAutoScan());
+    }
     if (this.videoElement) {
       this.videoElement.addEventListener('loadedmetadata', () => this.markCameraReady());
       this.videoElement.addEventListener('playing', () => this.markCameraReady());
     }
 
-    // Request permissions on load
-    this.requestCameraPermissions();
+    // UX Improvement: Don't request permissions on load.
+    // It will be requested when the user clicks "Start Camera".
+    this.showStatus('ℹ️ Nhấn "Khởi Động Camera" để bắt đầu', 'info');
   }
 
   getApiBaseURL() {
@@ -48,23 +56,6 @@ class FaceScanModule {
         ? process.env.REACT_APP_API_BASE_URL
         : null;
     return envBaseUrl || window.DeepFaceAPI?.getBaseURL?.() || 'http://localhost:18000';
-  }
-
-  /**
-   * Request camera permissions
-   */
-  async requestCameraPermissions() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      // Close the test stream
-      stream.getTracks().forEach((track) => track.stop());
-      this.showStatus('✓ Camera sẵn sàng', 'success');
-    } catch (error) {
-      this.isRunning = false;
-      this.updateButtonStates();
-      this.showStatus('❌ Không thể truy cập camera. Vui lòng cho phép quyền truy cập.', 'error');
-      console.error('Camera permission error:', error);
-    }
   }
 
   /**
@@ -91,9 +82,6 @@ class FaceScanModule {
       this.markCameraReady();
       this.updateButtonStates();
       this.showStatus('✓ Camera đang chạy', 'info');
-
-      // Start continuous frame capture for real-time detection (optional)
-      this.continuousCapture();
     } catch (error) {
       this.isRunning = false;
       this.updateButtonStates();
@@ -106,6 +94,12 @@ class FaceScanModule {
    * Stop webcam stream
    */
   stopWebcam() {
+    if (this.autoScanTimeoutId) {
+      clearTimeout(this.autoScanTimeoutId);
+      this.autoScanTimeoutId = null;
+    }
+    this.isAutoScanning = false;
+
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
@@ -124,8 +118,8 @@ class FaceScanModule {
   /**
    * Capture frame and send for verification
    */
-  async captureAndVerify() {
-    if (!this.videoElement || !this.isRunning) {
+  async captureAndVerify(isAuto = false) {
+    if (!this.videoElement || !this.isRunning) { // Check if camera is running
       this.showStatus('❌ Vui lòng khởi động camera trước', 'error');
       return;
     }
@@ -135,8 +129,10 @@ class FaceScanModule {
     }
 
     this.isProcessing = true;
-    this.captureBtn.disabled = true;
-    this.showStatus('⏳ Đang xác thực...', 'info');
+    this.updateButtonStates();
+    if (!isAuto) {
+      this.showStatus('⏳ Đang xác thực...', 'info');
+    }
 
     try {
       // Capture frame from video
@@ -145,10 +141,28 @@ class FaceScanModule {
       // Send to backend for verification
       const result = await this.verifyFace(frameBase64);
 
-      // Display result
-      this.displayResult(result);
+      // In auto-scan mode, don't show a result if no face was found.
+      if (isAuto && result.status === 'denied' && result.reason === 'no_face') {
+        // Silently continue scanning without showing an error
+      } else {
+        this.displayResult(result);
+      }
+
+      // If verification is successful, handle it based on the scan mode.
+      if (result.status === 'allowed') {
+        // In auto-scan mode, we don't stop. We just show the result and continue scanning.
+        if (isAuto) {
+          this.showStatus(`✓ Chào mừng ${result.employee_name}!`, 'success');
+        } else {
+          // In manual scan mode, we stop the camera after success for a better UX.
+          this.showStatus(`✓ Chào mừng ${result.employee_name}. Camera sẽ tự động dừng.`, 'success');
+          setTimeout(() => this.stopWebcam(), 2000);
+        }
+      }
     } catch (error) {
-      this.showStatus('❌ Lỗi xác thực: ' + error.message, 'error');
+      if (!isAuto) { // Only show errors on manual capture
+        this.showStatus('❌ Lỗi xác thực: ' + error.message, 'error');
+      }
       console.error('Verification error:', error);
     } finally {
       this.isProcessing = false;
@@ -178,12 +192,50 @@ class FaceScanModule {
   /**
    * Continuous frame capture for real-time detection (optional)
    */
-  continuousCapture() {
-    if (!this.isRunning) return;
+  async continuousCapture() {
+    if (this.autoScanTimeoutId) {
+      clearTimeout(this.autoScanTimeoutId);
+      this.autoScanTimeoutId = null;
+    }
 
-    // Optional: Send frames periodically for real-time detection
-    // This can be implemented based on backend capability
-    setTimeout(() => this.continuousCapture(), 2000);
+    // Stop if camera is off or auto-scan is disabled
+    if (!this.isRunning || !this.isAutoScanning) {
+      return;
+    }
+
+    await this.captureAndVerify(true); // Call with isAuto = true
+
+    // If still in auto-scan mode (i.e., verification didn't stop it), schedule the next scan.
+    if (this.isAutoScanning) {
+      this.autoScanTimeoutId = setTimeout(() => this.continuousCapture(), 2000);
+    }
+  }
+
+  /**
+   * Toggle auto-scan mode
+   */
+  toggleAutoScan() {
+    this.isAutoScanning = !this.isAutoScanning;
+    this.updateButtonStates();
+    this.showStatus(this.isAutoScanning ? '🔍 Đã bật quét tự động...' : '✓ Đã tắt quét tự động', 'info');
+    this.continuousCapture();
+  }
+
+  /**
+   * Flash video border color for visual feedback
+   */
+  flashVideoBorder(status) {
+    if (!this.videoContainer) return;
+
+    const className = status === 'success' ? 'scan-success' : 'scan-error';
+
+    this.videoContainer.classList.add(className);
+
+    setTimeout(() => {
+      if (this.videoContainer) {
+        this.videoContainer.classList.remove(className);
+      }
+    }, 1500);
   }
 
   /**
@@ -223,6 +275,7 @@ class FaceScanModule {
     const resultDiv = document.createElement('div');
 
     if (result.status === 'allowed') {
+      this.flashVideoBorder('success');
       resultDiv.className = 'result-card result-success';
       resultDiv.innerHTML = `
         <div class="result-icon">✓</div>
@@ -233,6 +286,7 @@ class FaceScanModule {
       `;
       this.showStatus('✓ Xác thực thành công!', 'success');
     } else if (result.status === 'denied') {
+      this.flashVideoBorder('error');
       const hintTextByReason = {
         multiple_faces: 'Vui lòng chỉ để một người trước camera và thử lại.',
         no_face: 'Hãy đưa khuôn mặt vào khung hình và thử lại.',
@@ -258,6 +312,7 @@ class FaceScanModule {
       `;
       this.showStatus('❌ Xác thực thất bại!', 'error');
     } else if (result.status === 'stranger') {
+      this.flashVideoBorder('error');
       resultDiv.className = 'result-card result-warning';
       resultDiv.innerHTML = `
         <div class="result-icon">⚠️</div>
@@ -290,7 +345,17 @@ class FaceScanModule {
       this.stopBtn.disabled = !cameraReady;
     }
     if (this.captureBtn) {
-      this.captureBtn.disabled = !cameraReady || this.isProcessing;
+      this.captureBtn.disabled = !cameraReady || this.isProcessing || this.isAutoScanning;
+    }
+    if (this.autoScanBtn) {
+      this.autoScanBtn.disabled = !cameraReady || this.isProcessing;
+      if (this.isAutoScanning) {
+        this.autoScanBtn.innerHTML = '<span>⏳</span> <span>Dừng Quét</span>';
+        this.autoScanBtn.classList.add('active');
+      } else {
+        this.autoScanBtn.innerHTML = '<span>🔄</span> <span>Tự Động Quét</span>';
+        this.autoScanBtn.classList.remove('active');
+      }
     }
   }
 

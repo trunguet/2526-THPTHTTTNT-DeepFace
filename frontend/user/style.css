@@ -294,6 +294,18 @@ body {
   max-height: 560px !important;
 }
 
+.video-container.scan-success {
+  border-color: var(--success) !important;
+  box-shadow: 0 0 24px var(--success) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.video-container.scan-error {
+  border-color: var(--error) !important;
+  box-shadow: 0 0 24px var(--error) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
 #video-stream,
 #canvas-stream {
   width: 100% !important;
