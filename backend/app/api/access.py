@@ -40,6 +40,30 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     employee_hint = _resolve_employee(db, request.employee_id)
 
     snapshot_key, snapshot_url = save_bytes("audit/unknown", image_bytes)
+
+    # Optional liveness challenge gate (computed client-side).
+    # If the client provides a failed result, reject immediately.
+    if request.challenge_passed is False:
+        linked_employee = employee_hint
+        log = AttendanceLog(
+            employee_code=linked_employee.employee_code if linked_employee else None,
+            status="FAILED",
+            minio_snapshot_path=snapshot_key,
+        )
+        db.add(log)
+        db.commit()
+        return {
+            "status": "denied",
+            "reason": "challenge_failed",
+            "message": "Không qua challenge chống giả mạo (chớp mắt/quay đầu).",
+            "confidence": 0.0,
+            "audit_object": snapshot_key,
+            "image_url": snapshot_url,
+            "challenge": {
+                "type": request.challenge_type,
+                "passed": False,
+            },
+        }
     try:
         result = verify_liveness_and_embedding(image_bytes)
     except Exception as exc:
@@ -121,9 +145,18 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     db.commit()
     message = {
         "spoof": "Kiểm tra chống giả mạo thất bại",
+        "minifas_low_score": "MiniFAS score thấp, vui lòng thử lại",
         "no_face": "Không phát hiện khuôn mặt",
         "no_match": "Khuôn mặt không khớp với bất kỳ nhân viên nào",
         "multiple_faces": "Phát hiện nhiều hơn một khuôn mặt. Vui lòng chỉ để một người trước camera.",
+        "too_dark": "Khung hình quá tối. Vui lòng tăng ánh sáng và thử lại.",
+        "face_too_close": "Khuôn mặt quá sát camera. Vui lòng lùi xa hơn và thử lại.",
+        "face_too_far": "Khuôn mặt quá xa camera. Vui lòng lại gần hơn và thử lại.",
+        "face_bright_bg_dark": "Mặt sáng bất thường nhưng nền tối. Vui lòng điều chỉnh ánh sáng và thử lại.",
+        "face_tilted": "Khuôn mặt bị nghiêng. Vui lòng giữ thẳng mặt và thử lại.",
+        "too_blurry": "Hình ảnh bị mờ/rung. Vui lòng giữ yên và thử lại.",
+        "face_turned": "Khuôn mặt đang quay sang trái/phải hoặc ngước/cúi quá nhiều. Vui lòng nhìn thẳng camera và thử lại.",
+        "challenge_failed": "Không qua challenge chống giả mạo (chớp mắt/quay đầu).",
     }.get(result.reason, "Xác thực khuôn mặt thất bại")
 
     return {

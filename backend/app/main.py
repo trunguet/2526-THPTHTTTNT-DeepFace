@@ -6,6 +6,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from app.api.access import router as access_router
+from app.api.auth import router as auth_router
 from app.api.employees import router as employees_router
 from app.api.logs import router as logs_router
 from app.db import init_db
@@ -24,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(access_router)
+app.include_router(auth_router)
 app.include_router(employees_router)
 app.include_router(logs_router)
 

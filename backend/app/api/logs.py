@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.db import AttendanceLog, get_db
 from app.storage import object_url
+from app.security import require_admin
 
 
-router = APIRouter(prefix="/api/access-logs", tags=["access-logs"])
+router = APIRouter(prefix="/api/access-logs", tags=["access-logs"], dependencies=[Depends(require_admin)])
 
 
 def _snapshot_url(log: AttendanceLog) -> str:

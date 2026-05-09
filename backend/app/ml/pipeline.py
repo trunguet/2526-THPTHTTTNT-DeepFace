@@ -6,13 +6,29 @@ import numpy as np
 
 from app.config import (
     ANTISPOOF_DEVICE_ID,
+    DETECTOR_MIN_SCORE,
     FACE_DEVICE,
+    QUALITY_BRIGHT_FACE_DARK_BG_BG_MAX,
+    QUALITY_BRIGHT_FACE_DARK_BG_FACE_MIN,
+    QUALITY_BRIGHT_FACE_DARK_BG_RATIO_MIN,
+    QUALITY_ENFORCE_POSE_GATE,
+    QUALITY_MAX_FACE_AREA_RATIO,
+    QUALITY_MAX_FACE_HEIGHT_RATIO,
+    QUALITY_MIN_FACE_AREA_RATIO,
+    QUALITY_MIN_FACE_BRIGHTNESS,
+    QUALITY_MIN_FACE_HEIGHT_RATIO,
+    QUALITY_MIN_FACE_SHARPNESS,
+    QUALITY_MIN_FRAME_BRIGHTNESS,
+    QUALITY_MAX_FACE_ROLL_DEG,
+    QUALITY_MAX_FACE_PITCH_DEG,
+    QUALITY_MAX_FACE_YAW_DEG,
     YOLO_FACE_MODEL,
 )
 from app.ml.anti_spoof import AntiSpoofResult, MiniFASNetAntiSpoofing
 from app.ml.detector import FaceAligner, FaceDetection, FaceDetector
 from app.ml.embedder import ArcFaceEmbedder
 from app.ml.matcher import MatchResult, QdrantFaceMatcher
+from app.ml.quality import compute_quality_metrics, reject_reason_from_metrics
 
 
 @dataclass(frozen=True)
@@ -41,7 +57,7 @@ class FaceRecognitionPipeline:
 
     def embedding_for_enroll(self, image_bytes: bytes) -> EmbeddingResult:
         image_bgr = decode_image_bytes(image_bytes)
-        detections = self.detector.detect_all(image_bgr)
+        detections = [d for d in self.detector.detect_all(image_bgr) if d.score >= DETECTOR_MIN_SCORE]
         if not detections:
             raise ValueError("No face detected in employee image")
         if len(detections) > 1:
@@ -54,7 +70,7 @@ class FaceRecognitionPipeline:
 
     def verify(self, image_bytes: bytes) -> VerificationResult:
         image_bgr = decode_image_bytes(image_bytes)
-        detections = self.detector.detect_all(image_bgr)
+        detections = [d for d in self.detector.detect_all(image_bgr) if d.score >= DETECTOR_MIN_SCORE]
         if not detections:
             return VerificationResult(
                 status="rejected",
@@ -76,11 +92,44 @@ class FaceRecognitionPipeline:
 
         detection = detections[0]
 
-        spoof = self.anti_spoof.predict(image_bgr, detection)
-        if not spoof.is_real:
+        metrics = compute_quality_metrics(image_bgr, detection)
+        quality_reject = reject_reason_from_metrics(
+            metrics,
+            min_frame_brightness=QUALITY_MIN_FRAME_BRIGHTNESS,
+            min_face_brightness=QUALITY_MIN_FACE_BRIGHTNESS,
+            max_face_area_ratio=QUALITY_MAX_FACE_AREA_RATIO,
+            min_face_area_ratio=QUALITY_MIN_FACE_AREA_RATIO,
+            min_face_height_ratio=QUALITY_MIN_FACE_HEIGHT_RATIO,
+            max_face_height_ratio=QUALITY_MAX_FACE_HEIGHT_RATIO,
+            max_face_roll_deg=QUALITY_MAX_FACE_ROLL_DEG,
+            min_face_sharpness=QUALITY_MIN_FACE_SHARPNESS,
+            max_head_yaw_deg=QUALITY_MAX_FACE_YAW_DEG,
+            max_head_pitch_deg=QUALITY_MAX_FACE_PITCH_DEG,
+            enforce_pose_gate=QUALITY_ENFORCE_POSE_GATE,
+            bright_face_min=QUALITY_BRIGHT_FACE_DARK_BG_FACE_MIN,
+            dark_bg_max=QUALITY_BRIGHT_FACE_DARK_BG_BG_MAX,
+            bright_face_dark_bg_ratio_min=QUALITY_BRIGHT_FACE_DARK_BG_RATIO_MIN,
+        )
+        if quality_reject is not None:
             return VerificationResult(
                 status="rejected",
-                reason="spoof",
+                reason=quality_reject,
+                embedding=None,
+                detection=detection,
+                anti_spoof=None,
+                match=None,
+            )
+
+        spoof = self.anti_spoof.predict(image_bgr, detection)
+        if not spoof.is_real:
+            reason = (
+                "minifas_low_score"
+                if spoof.real_score < getattr(self.anti_spoof, "real_threshold", 0.5)
+                else "spoof"
+            )
+            return VerificationResult(
+                status="rejected",
+                reason=reason,
                 embedding=None,
                 detection=detection,
                 anti_spoof=spoof,

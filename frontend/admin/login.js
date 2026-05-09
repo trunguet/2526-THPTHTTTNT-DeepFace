@@ -1,5 +1,4 @@
 (function () {
-  const ACCOUNT_PREFIX = 'deepface_admin_account:';
   const TOKEN_KEY = 'auth_token';
   const USER_KEY = 'admin_username';
 
@@ -10,14 +9,6 @@
   const registerPanel = registerForm;
   const showLoginBtn = document.getElementById('show-login');
   const showRegisterBtn = document.getElementById('show-register');
-
-  function accountKey(username) {
-    return `${ACCOUNT_PREFIX}${username.trim().toLowerCase()}`;
-  }
-
-  function hasAnyAccount() {
-    return Object.keys(localStorage).some((key) => key.startsWith(ACCOUNT_PREFIX));
-  }
 
   function showMessage(message, type) {
     statusBox.textContent = message;
@@ -43,28 +34,44 @@
     return './index.html';
   }
 
-  function randomToken() {
-    const bytes = new Uint8Array(24);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  }
-
-  async function digest(value) {
-    if (crypto.subtle) {
-      const data = new TextEncoder().encode(value);
-      const hash = await crypto.subtle.digest('SHA-256', data);
-      return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
-    }
-    return btoa(unescape(encodeURIComponent(value)));
-  }
-
-  async function passwordHash(password, salt) {
-    return digest(`${salt}:${password}`);
-  }
-
-  function saveSession(username) {
-    localStorage.setItem(TOKEN_KEY, `admin-${randomToken()}`);
+  function saveSession(token, username) {
+    localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, username);
+  }
+
+  async function apiPost(path, payload) {
+    if (window.DeepFaceAPI?.post) {
+      return window.DeepFaceAPI.post(path, payload);
+    }
+
+    const base = (window.DEEPFACE_API_BASE_URL || 'http://localhost:18000').replace(/\/$/, '');
+    const response = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload ?? {}),
+    });
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await response.json() : await response.text();
+    if (!response.ok) {
+      const detail = typeof data === 'object' ? data.detail || data.message : data;
+      throw new Error(detail || `HTTP ${response.status}`);
+    }
+    return data;
+  }
+
+  async function apiGet(path) {
+    if (window.DeepFaceAPI?.get) {
+      return window.DeepFaceAPI.get(path);
+    }
+    const base = (window.DEEPFACE_API_BASE_URL || 'http://localhost:18000').replace(/\/$/, '');
+    const response = await fetch(`${base}${path}`, { method: 'GET' });
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await response.json() : await response.text();
+    if (!response.ok) {
+      const detail = typeof data === 'object' ? data.detail || data.message : data;
+      throw new Error(detail || `HTTP ${response.status}`);
+    }
+    return data;
   }
 
   showLoginBtn.addEventListener('click', () => setMode('login'));
@@ -89,24 +96,16 @@
       showMessage('Mật khẩu xác nhận không khớp.', 'error');
       return;
     }
-    if (localStorage.getItem(accountKey(username))) {
-      showMessage('Tài khoản này đã tồn tại. Hãy đăng nhập.', 'warning');
-      setMode('login');
-      document.getElementById('login-username').value = username;
+
+    try {
+      const result = await apiPost('/api/auth/admin/register', { username, password });
+      saveSession(result.token, result.username || username);
+      showMessage('Đăng ký thành công. Đang chuyển vào Admin UI...', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Đăng ký thất bại', 'error');
       return;
     }
 
-    const salt = randomToken();
-    const account = {
-      username,
-      salt,
-      password_hash: await passwordHash(password, salt),
-      created_at: new Date().toISOString(),
-    };
-
-    localStorage.setItem(accountKey(username), JSON.stringify(account));
-    saveSession(username);
-    showMessage('Đăng ký thành công. Đang chuyển vào Admin UI...', 'success');
     setTimeout(() => {
       window.location.href = nextUrl();
     }, 500);
@@ -117,27 +116,22 @@
 
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
-    const rawAccount = localStorage.getItem(accountKey(username));
 
-    if (!rawAccount) {
-      showMessage('Không tìm thấy tài khoản. Hãy đăng ký trước.', 'error');
+    try {
+      const result = await apiPost('/api/auth/admin/login', { username, password });
+      saveSession(result.token, result.username || username);
+      showMessage('Đăng nhập thành công. Đang chuyển vào Admin UI...', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Đăng nhập thất bại', 'error');
       return;
     }
 
-    const account = JSON.parse(rawAccount);
-    const inputHash = await passwordHash(password, account.salt);
-
-    if (inputHash !== account.password_hash) {
-      showMessage('Mật khẩu không đúng.', 'error');
-      return;
-    }
-
-    saveSession(account.username);
-    showMessage('Đăng nhập thành công. Đang chuyển vào Admin UI...', 'success');
     setTimeout(() => {
       window.location.href = nextUrl();
     }, 500);
   });
 
-  setMode(hasAnyAccount() ? 'login' : 'register');
+  apiGet('/api/auth/admin/exists')
+    .then((result) => setMode(result?.exists ? 'login' : 'register'))
+    .catch(() => setMode('login'));
 })();

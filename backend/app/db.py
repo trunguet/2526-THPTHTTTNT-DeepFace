@@ -48,6 +48,23 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 def _ensure_required_schema() -> None:
     statements = [
         """
+        CREATE TABLE IF NOT EXISTS admin_accounts (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) NOT NULL,
+            password_salt VARCHAR(64) NOT NULL,
+            password_hash VARCHAR(128) NOT NULL,
+            password_iterations INT NOT NULL DEFAULT 210000,
+            full_name VARCHAR(100) NULL,
+            email VARCHAR(255) NULL,
+            role ENUM('admin','super_admin') NOT NULL DEFAULT 'admin',
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            last_login_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY ux_admin_accounts_username (username)
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """,
+        """
         CREATE TABLE IF NOT EXISTS employees (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             employee_code VARCHAR(50) NOT NULL,
@@ -105,6 +122,22 @@ def _ensure_required_schema() -> None:
             ).mappings().first()
             return bool(row and row.get("cnt"))
 
+        def column_type(table: str, column: str) -> str:
+            row = conn.execute(
+                text(
+                    """
+                    SELECT column_type AS column_type
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                      AND table_name = :table_name
+                      AND column_name = :column_name
+                    LIMIT 1
+                    """
+                ),
+                {"table_name": table, "column_name": column},
+            ).mappings().first()
+            return str(row.get("column_type") or "") if row else ""
+
         def index_exists(table: str, index: str) -> bool:
             row = conn.execute(
                 text(
@@ -145,6 +178,21 @@ def _ensure_required_schema() -> None:
         # Unique business identifier
         if not index_exists("employees", "ux_employees_employee_code"):
             conn.execute(text("CREATE UNIQUE INDEX ux_employees_employee_code ON employees (employee_code)"))
+
+        # Admin accounts backfill (best-effort; keep schema additive).
+        if not index_exists("admin_accounts", "ux_admin_accounts_username"):
+            conn.execute(text("CREATE UNIQUE INDEX ux_admin_accounts_username ON admin_accounts (username)"))
+
+        if not column_exists("admin_accounts", "password_salt"):
+            conn.execute(text("ALTER TABLE admin_accounts ADD COLUMN password_salt VARCHAR(64) NULL"))
+        if not column_exists("admin_accounts", "password_iterations"):
+            conn.execute(
+                text("ALTER TABLE admin_accounts ADD COLUMN password_iterations INT NOT NULL DEFAULT 210000")
+            )
+        if column_exists("admin_accounts", "role"):
+            role_type = column_type("admin_accounts", "role").lower()
+            if "enum" in role_type and "super_admin" not in role_type:
+                conn.execute(text("ALTER TABLE admin_accounts MODIFY COLUMN role ENUM('admin','super_admin')"))
 
         # Attendance logs extended columns
         if not column_exists("attendance_logs", "employee_code"):
@@ -262,6 +310,32 @@ class AttendanceLog(Base):
 
 
 AccessLog = AttendanceLog
+
+
+class AdminAccount(Base):
+    __tablename__ = "admin_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    password_salt: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    password_iterations: Mapped[int] = mapped_column(Integer, nullable=False, default=210000)
+    role: Mapped[str] = mapped_column(Enum("admin", "super_admin"), nullable=False, default="admin")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    full_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+        server_onupdate=text("CURRENT_TIMESTAMP"),
+    )
 
 
 def init_db(retries: int = 30) -> None:

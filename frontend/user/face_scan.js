@@ -237,6 +237,15 @@ class FaceScanModule {
         multiple_faces: 'Vui lòng chỉ để một người trước camera và thử lại.',
         no_face: 'Hãy đưa khuôn mặt vào khung hình và thử lại.',
         spoof: 'Vui lòng thử lại với khuôn mặt thật (không dùng ảnh/video).',
+        minifas_low_score: 'MiniFAS score thấp. Vui lòng thử lại.',
+        too_dark: 'Khung hình quá tối. Vui lòng tăng ánh sáng và thử lại.',
+        face_too_close: 'Khuôn mặt quá sát camera. Vui lòng lùi xa hơn và thử lại.',
+        face_too_far: 'Khuôn mặt quá xa camera. Vui lòng lại gần hơn và thử lại.',
+        face_bright_bg_dark: 'Mặt sáng bất thường nhưng nền tối. Vui lòng điều chỉnh ánh sáng và thử lại.',
+        face_tilted: 'Khuôn mặt bị nghiêng. Vui lòng giữ thẳng mặt và thử lại.',
+        too_blurry: 'Hình ảnh bị mờ/rung. Vui lòng giữ yên và thử lại.',
+        face_turned: 'Khuôn mặt đang quay quá nhiều. Vui lòng nhìn thẳng camera và thử lại.',
+        challenge_failed: 'Không qua challenge (chớp mắt/quay đầu). Vui lòng thử lại.',
       };
       const hintText =
         hintTextByReason[result.reason] || 'Vui lòng liên hệ quản trị viên';
