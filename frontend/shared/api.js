@@ -1,5 +1,11 @@
 (function () {
-  const DEFAULT_API_BASE_URL = 'http://localhost:18000';
+  const DEFAULT_API_BASE_URL =
+    window.location.port === '' ||
+    window.location.port === '8080' ||
+    window.location.port === '80' ||
+    window.location.port === '443'
+      ? ''
+      : 'http://localhost:18000';
   const API_STORAGE_KEY = 'deepface_api_base_url';
 
   function normalizeBaseURL(rawValue) {

@@ -29,10 +29,10 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-ml.txt \
 COPY backend/app ./app
 COPY models ./models
 
-RUN mkdir -p /root/.deepface/weights \
-    && if [ -f /app/models/extraction/arcface_weights.h5 ]; then \
-        cp /app/models/extraction/arcface_weights.h5 /root/.deepface/weights/arcface_weights.h5; \
-    fi
+RUN test -f /app/models/extraction/arcface_weights.h5 \
+    || (echo "Missing models/extraction/arcface_weights.h5. Build the backend image with ArcFace weights included." >&2; exit 1) \
+    && mkdir -p /root/.deepface/weights \
+    && cp /app/models/extraction/arcface_weights.h5 /root/.deepface/weights/arcface_weights.h5
 
 EXPOSE 8000
 

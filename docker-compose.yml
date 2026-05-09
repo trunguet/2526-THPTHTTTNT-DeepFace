@@ -1,6 +1,6 @@
 services:
   backend:
-    image: deepface_backend:latest
+    image: ${BACKEND_IMAGE:-deepface_backend:latest}
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -19,7 +19,7 @@ services:
       QDRANT_COLLECTION: face_embeddings
       VECTOR_SIZE: 512
       MATCH_THRESHOLD: 0.45
-      PUBLIC_API_BASE_URL: http://localhost:18000
+      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:18000}
       ADMIN_AUTH_SECRET: ${ADMIN_AUTH_SECRET:-dev-secret-change-me}
       ADMIN_TOKEN_TTL_SECONDS: ${ADMIN_TOKEN_TTL_SECONDS:-86400}
       CACHE_REDIS_ENABLED: ${CACHE_REDIS_ENABLED:-true}
@@ -41,7 +41,7 @@ services:
       - ./model_cache:/root/.deepface/weights
 
   worker:
-    image: deepface_backend:latest
+    image: ${BACKEND_IMAGE:-deepface_backend:latest}
     container_name: deepface_worker
     command: ["python", "-m", "app.worker"]
     environment:
@@ -55,7 +55,7 @@ services:
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: face_embeddings
       VECTOR_SIZE: 512
-      PUBLIC_API_BASE_URL: http://localhost:18000
+      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:18000}
       CACHE_REDIS_ENABLED: ${CACHE_REDIS_ENABLED:-true}
       CACHE_L1_MAX_ENTRIES: ${CACHE_L1_MAX_ENTRIES:-512}
       CACHE_EMPLOYEES_TTL_SECONDS: ${CACHE_EMPLOYEES_TTL_SECONDS:-60}
@@ -75,6 +75,7 @@ services:
       - ./model_cache:/root/.deepface/weights
 
   frontend-home:
+    image: ${FRONTEND_HOME_IMAGE:-deepface_frontend_home:latest}
     build:
       context: .
       dockerfile: frontend/home/Dockerfile
@@ -86,24 +87,42 @@ services:
       - frontend-user
 
   frontend-admin:
+    image: ${FRONTEND_ADMIN_IMAGE:-deepface_frontend_admin:latest}
     build:
       context: .
       dockerfile: frontend/admin/Dockerfile
     container_name: deepface_frontend_admin
     ports:
       - "3001:80"
+      - "8082:80"
     depends_on:
       - backend
 
   frontend-user:
+    image: ${FRONTEND_USER_IMAGE:-deepface_frontend_user:latest}
     build:
       context: .
       dockerfile: frontend/user/Dockerfile
     container_name: deepface_frontend_user
     ports:
       - "3002:80"
+      - "8081:80"
     depends_on:
       - backend
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: deepface_nginx
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend-home
+      - frontend-admin
+      - frontend-user
+    restart: unless-stopped
 
   mysql:
     image: mysql:8.4

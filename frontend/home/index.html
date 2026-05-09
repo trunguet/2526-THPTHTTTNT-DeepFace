@@ -27,7 +27,7 @@
         <p class="subtitle">Chọn vai trò để tiếp tục vào khu vực phù hợp.</p>
 
         <div class="role-actions" aria-label="Chọn vai trò">
-          <a class="role-card role-admin" href="http://localhost:3001/login.html" data-target-port="3001" data-target-path="/login.html">
+          <a class="role-card role-admin" href="/admin/login.html?app=admin" data-target-port="8082" data-target-path="/login.html" data-gateway-path="/admin/login.html?app=admin">
             <span class="role-icon" aria-hidden="true">A</span>
             <span class="role-content">
               <span class="role-title">ADMIN</span>
@@ -36,7 +36,7 @@
             <span class="role-arrow" aria-hidden="true">→</span>
           </a>
 
-          <a class="role-card role-user" href="http://localhost:3002" data-target-port="3002">
+          <a class="role-card role-user" href="/user/?app=user" data-target-port="8081" data-target-path="/login.html" data-gateway-path="/user/login.html?app=user">
             <span class="role-icon" aria-hidden="true">N</span>
             <span class="role-content">
               <span class="role-title">Nhân Viên</span>

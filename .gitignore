@@ -1,6 +1,7 @@
 # Runtime / generated artifacts (safe to delete)
 backups/
 model_cache/
+.deepface/
 database/minio_data/
 allfiles.txt
 docker-compose.dev.yml
@@ -9,6 +10,10 @@ docker-compose.dev.yml
 backend/app/uploads/
 uploads/
 result_*.jpg
+
+# Large model artifacts: keep them local, in Docker images, or Git LFS.
+models/extraction/arcface_weights.h5
+models/**/__pycache__/
 
 # Python
 **/__pycache__/

@@ -294,6 +294,82 @@ body {
   max-height: 560px !important;
 }
 
+.scan-frame {
+  position: absolute !important;
+  inset: 8% 12% !important;
+  border: 2px solid rgba(126, 231, 222, 0.55) !important;
+  border-radius: 14px !important;
+  pointer-events: none !important;
+  opacity: 0.82 !important;
+  box-shadow: 0 0 0 999px rgba(2, 6, 23, 0.1) !important;
+}
+
+.scan-line {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, transparent, #7ee7de, transparent) !important;
+  box-shadow: 0 0 18px rgba(126, 231, 222, 0.85) !important;
+  animation: realtimeScanLine 2.2s linear infinite !important;
+}
+
+.realtime-overlay {
+  position: absolute !important;
+  left: 14px !important;
+  bottom: 14px !important;
+  max-width: calc(100% - 28px) !important;
+  padding: 8px 12px !important;
+  border-radius: 999px !important;
+  background: rgba(15, 23, 42, 0.76) !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  color: #f8fafc !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+.scan-processing .scan-frame {
+  border-color: rgba(251, 191, 36, 0.85) !important;
+}
+
+.scan-allowed .scan-frame {
+  border-color: rgba(16, 185, 129, 0.9) !important;
+}
+
+.scan-denied .scan-frame,
+.scan-error .scan-frame {
+  border-color: rgba(239, 68, 68, 0.9) !important;
+}
+
+.scan-warning .scan-frame {
+  border-color: rgba(245, 158, 11, 0.9) !important;
+}
+
+.realtime-processing {
+  border-color: rgba(251, 191, 36, 0.55) !important;
+  color: #fde68a !important;
+}
+
+.realtime-allowed {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  color: #86efac !important;
+}
+
+.realtime-denied,
+.realtime-error {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  color: #fca5a5 !important;
+}
+
+.realtime-warning {
+  border-color: rgba(245, 158, 11, 0.65) !important;
+  color: #fcd34d !important;
+}
+
 #video-stream,
 #canvas-stream {
   width: 100% !important;
@@ -831,6 +907,15 @@ tbody tr:hover {
   }
   100% {
     left: 100%;
+  }
+}
+
+@keyframes realtimeScanLine {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(calc(100% + 260px));
   }
 }
 
