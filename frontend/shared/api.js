@@ -1,6 +1,12 @@
 (function () {
-  const DEFAULT_API_BASE_URL = 'http://localhost:18000';
   const API_STORAGE_KEY = 'deepface_api_base_url';
+  const DIRECT_FRONTEND_PORTS = new Set(['3000', '3001', '3002']);
+
+  function defaultApiBaseURL() {
+    return DIRECT_FRONTEND_PORTS.has(window.location.port) ? 'http://localhost:18000' : '';
+  }
+
+  const DEFAULT_API_BASE_URL = defaultApiBaseURL();
 
   function normalizeBaseURL(rawValue) {
     let value = String(rawValue || '').trim().replace(/\/$/, '');

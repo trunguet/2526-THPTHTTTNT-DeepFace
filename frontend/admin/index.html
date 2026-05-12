@@ -176,36 +176,6 @@
     <script src="../shared/background.js"></script>
     <script src="./sidebar.js"></script>
     <script>
-      // Mock data for dashboard stats
-      function loadDashboardStats() {
-        document.getElementById('checkin-count').textContent = '24';
-        document.getElementById('present-count').textContent = '23';
-        document.getElementById('alert-count').textContent = '1';
-
-        // Mock activity data
-        const activityBody = document.getElementById('activity-body');
-        activityBody.innerHTML = `
-          <tr>
-            <td>14:30 hôm nay</td>
-            <td>Thêm nhân viên mới</td>
-            <td>Nguyễn Văn A</td>
-            <td><span class="status-badge status-allowed">✓ Thành công</span></td>
-          </tr>
-          <tr>
-            <td>13:45 hôm nay</td>
-            <td>Cảnh báo người lạ</td>
-            <td>Camera 01 - Lối vào</td>
-            <td><span class="status-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24">⚠️ Cảnh báo</span></td>
-          </tr>
-          <tr>
-            <td>12:20 hôm nay</td>
-            <td>Xóa nhân viên</td>
-            <td>Trần Văn B</td>
-            <td><span class="status-badge status-allowed">✓ Thành công</span></td>
-          </tr>
-        `;
-      }
-
       function handleLogout() {
         if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
           window.DeepFaceAdminAuth?.logout?.();
@@ -248,7 +218,6 @@
           tick();
           setInterval(tick, 1000);
         }
-        loadDashboardStats();
       });
     </script>
     <script src="../shared/api.js"></script>

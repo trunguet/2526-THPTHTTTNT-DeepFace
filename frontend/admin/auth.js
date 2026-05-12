@@ -3,7 +3,8 @@
   const TOKEN_KEY = 'auth_token';
   const USER_KEY = 'admin_username';
   const API_STORAGE_KEY = 'deepface_api_base_url';
-  const DEFAULT_API_BASE_URL = 'http://localhost:18000';
+  const DIRECT_FRONTEND_PORTS = new Set(['3000', '3001', '3002']);
+  const DEFAULT_API_BASE_URL = DIRECT_FRONTEND_PORTS.has(window.location.port) ? 'http://localhost:18000' : '';
 
   function isLoginPage() {
     return window.location.pathname.endsWith(`/${LOGIN_PAGE}`) || window.location.pathname.endsWith(LOGIN_PAGE);

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.ai import build_embedding
 from app.db import Employee, SessionLocal, init_db
 from app.jobs import QUEUE_NAME, get_redis_client
+from app.runtime import env_bool, run_startup_step
 from app.storage import init_bucket, read_bytes
 from app.vector_store import init_collection, upsert_employee_vector
 
@@ -36,38 +37,29 @@ def process_embedding_job(db: Session, employee_id: int) -> None:
 
 
 def main() -> None:
-    def env_bool(name: str, default: bool) -> bool:
-        import os
-
-        raw = os.getenv(name)
-        if raw is None:
-            return default
-        return str(raw).strip().lower() in {"1", "true", "yes", "on"}
-
     strict_startup = env_bool("STRICT_STARTUP", True)
     init_external = env_bool("INIT_EXTERNAL_DEPENDENCIES", True)
+    db_retries = 30 if strict_startup else 3
+    external_retries = 20 if strict_startup else 3
 
-    try:
-        init_db(retries=30 if strict_startup else 3)
-    except Exception as exc:
-        print(f"Worker init_db failed: {exc}", flush=True)
-        if strict_startup:
-            raise
+    run_startup_step(
+        "Worker init_db",
+        lambda: init_db(retries=db_retries),
+        strict=strict_startup,
+    )
 
     if init_external:
-        try:
-            init_bucket(retries=20 if strict_startup else 3)
-        except Exception as exc:
-            print(f"Worker init_bucket failed: {exc}", flush=True)
-            if strict_startup:
-                raise
+        run_startup_step(
+            "Worker init_bucket",
+            lambda: init_bucket(retries=external_retries),
+            strict=strict_startup,
+        )
+        run_startup_step(
+            "Worker init_collection",
+            lambda: init_collection(retries=external_retries),
+            strict=strict_startup,
+        )
 
-        try:
-            init_collection(retries=20 if strict_startup else 3)
-        except Exception as exc:
-            print(f"Worker init_collection failed: {exc}", flush=True)
-            if strict_startup:
-                raise
     redis_client = get_redis_client()
     print("Embedding worker started", flush=True)
 

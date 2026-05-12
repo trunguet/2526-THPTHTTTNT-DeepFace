@@ -25,6 +25,9 @@ yarn-debug.log*
 
 # Local environment files
 .env
+.env.*
+!.env.example
+!.env.*.example
 
 # Docker bind/volume leftovers (if any)
 data/

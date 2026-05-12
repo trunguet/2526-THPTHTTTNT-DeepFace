@@ -32,6 +32,9 @@ COPY models ./models
 RUN mkdir -p /root/.deepface/weights \
     && if [ -f /app/models/extraction/arcface_weights.h5 ]; then \
         cp /app/models/extraction/arcface_weights.h5 /root/.deepface/weights/arcface_weights.h5; \
+    else \
+        python -c "import os; os.environ.setdefault('TF_USE_LEGACY_KERAS', '1'); from deepface import DeepFace; DeepFace.build_model('ArcFace')" \
+        || echo "ArcFace weights were not baked into the image; they will be downloaded or mounted at runtime."; \
     fi
 
 EXPOSE 8000

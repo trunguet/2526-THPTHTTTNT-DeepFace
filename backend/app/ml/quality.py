@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import cv2
 import numpy as np
 
 from app.ml.detector import FaceDetection
+
+try:  # pragma: no cover - exercised implicitly when OpenCV is installed
+    import cv2
+except Exception:  # pragma: no cover - local lightweight test fallback
+    cv2 = None
 
 
 @dataclass(frozen=True)
@@ -34,7 +38,7 @@ def compute_quality_metrics(image_bgr: np.ndarray, detection: FaceDetection) -> 
     x2 = max(x1 + 1, min(w, int(x2)))
     y2 = max(y1 + 1, min(h, int(y2)))
 
-    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    gray = _to_gray(image_bgr)
     total_pixels = float(h * w)
     total_sum = float(np.sum(gray, dtype=np.float64))
     frame_mean = total_sum / total_pixels
@@ -52,8 +56,7 @@ def compute_quality_metrics(image_bgr: np.ndarray, detection: FaceDetection) -> 
     face_height_ratio = float((y2 - y1) / float(h))
     face_width_ratio = float((x2 - x1) / float(w))
 
-    lap = cv2.Laplacian(face_gray, cv2.CV_64F)
-    face_sharpness = float(lap.var())
+    face_sharpness = _laplacian_variance(face_gray)
 
     face_roll_deg: float | None = None
     if detection.landmarks_5 is not None and detection.landmarks_5.shape[0] >= 2:
@@ -67,7 +70,7 @@ def compute_quality_metrics(image_bgr: np.ndarray, detection: FaceDetection) -> 
     head_yaw_deg: float | None = None
     head_pitch_deg: float | None = None
     head_roll_deg: float | None = None
-    if detection.landmarks_5 is not None and detection.landmarks_5.shape[0] >= 5:
+    if cv2 is not None and detection.landmarks_5 is not None and detection.landmarks_5.shape[0] >= 5:
         # Estimate head pose using a simple 3D face model and solvePnP.
         # Landmarks order (YOLOv8-face style in this repo): left_eye, right_eye, nose, left_mouth, right_mouth.
         image_points = detection.landmarks_5[:5].astype(np.float64)
@@ -133,6 +136,33 @@ def compute_quality_metrics(image_bgr: np.ndarray, detection: FaceDetection) -> 
         head_roll_deg=head_roll_deg,
         face_sharpness=float(face_sharpness),
     )
+
+
+def _to_gray(image_bgr: np.ndarray) -> np.ndarray:
+    if cv2 is not None:
+        return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    if image_bgr.ndim == 2:
+        return image_bgr.astype(np.float64)
+    b = image_bgr[:, :, 0].astype(np.float64)
+    g = image_bgr[:, :, 1].astype(np.float64)
+    r = image_bgr[:, :, 2].astype(np.float64)
+    return 0.114 * b + 0.587 * g + 0.299 * r
+
+
+def _laplacian_variance(gray: np.ndarray) -> float:
+    if cv2 is not None:
+        return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+    gray_f = gray.astype(np.float64)
+    padded = np.pad(gray_f, 1, mode="edge")
+    lap = (
+        padded[:-2, 1:-1]
+        + padded[2:, 1:-1]
+        + padded[1:-1, :-2]
+        + padded[1:-1, 2:]
+        - 4.0 * padded[1:-1, 1:-1]
+    )
+    return float(lap.var())
 
 
 def reject_reason_from_metrics(

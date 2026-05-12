@@ -3,12 +3,11 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.db import AttendanceLog, get_db
-from app.storage import object_url
-from app.security import require_admin
-from app.cache import get_json, set_json, versioned_key
+from app.cache import bump_version, get_json, set_json, versioned_key
 from app.config import CACHE_LOGS_TTL_SECONDS
-from app.cache import bump_version
+from app.db import AttendanceLog, get_db
+from app.security import require_admin
+from app.storage import object_url
 
 
 router = APIRouter(prefix="/api/access-logs", tags=["access-logs"], dependencies=[Depends(require_admin)])

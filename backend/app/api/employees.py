@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.ai import build_embedding, validate_image
 from app.db import AttendanceLog, Employee, EmployeeBackup, get_db
+from app.employee_lookup import resolve_employee
 from app.jobs import enqueue_embedding_job
 from app.schemas import EmployeeCreate, EmployeeUpdate
 from app.storage import delete_object, read_bytes, save_bytes
@@ -17,24 +18,6 @@ from app.config import CACHE_EMPLOYEES_TTL_SECONDS
 
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
-
-
-def _resolve_employee(db: Session, identifier: str) -> Employee | None:
-    """
-    Resolve an employee by business identifier first (`employee_code`), then fall back to DB id.
-    This keeps backward compatibility for older clients that used numeric DB ids.
-    """
-    value = str(identifier or "").strip()
-    if not value:
-        return None
-
-    employee = db.query(Employee).filter(Employee.employee_code == value).first()
-    if employee is not None:
-        return employee
-
-    if value.isdigit():
-        return db.query(Employee).filter(Employee.id == int(value)).first()
-    return None
 
 
 def _employee_to_dict(employee: Employee) -> dict[str, Any]:
@@ -196,6 +179,25 @@ def list_unscanned_today(db: Session = Depends(get_db)) -> dict[str, Any]:
     return result
 
 
+@router.get("/lookup/{employee_id}")
+def lookup_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """
+    Public lightweight lookup used by the User UI before scanning.
+
+    It avoids the old demo-only login flow while keeping the actual verification
+    decision inside the face-recognition pipeline.
+    """
+    employee = resolve_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    return {
+        "employee_id": employee.employee_code,
+        "full_name": employee.full_name,
+        "department": employee.department or "",
+    }
+
+
 @router.post("/reindex-all", dependencies=[Depends(require_admin)])
 def reindex_all(db: Session = Depends(get_db)) -> dict[str, Any]:
     """
@@ -245,7 +247,7 @@ def reset_qdrant_and_reindex(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 @router.put("/{employee_id}", dependencies=[Depends(require_admin)])
 def update_employee(employee_id: str, payload: EmployeeUpdate, db: Session = Depends(get_db)) -> dict[str, Any]:
-    employee = _resolve_employee(db, employee_id)
+    employee = resolve_employee(db, employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -278,7 +280,7 @@ def update_employee(employee_id: str, payload: EmployeeUpdate, db: Session = Dep
 
 @router.delete("/{employee_id}", dependencies=[Depends(require_admin)])
 def delete_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str, str]:
-    employee = _resolve_employee(db, employee_id)
+    employee = resolve_employee(db, employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -310,7 +312,7 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str
 
 @router.post("/{employee_id}/extract-embedding", dependencies=[Depends(require_admin)])
 def extract_embedding(employee_id: str, db: Session = Depends(get_db)) -> dict[str, str]:
-    employee = _resolve_employee(db, employee_id)
+    employee = resolve_employee(db, employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -326,7 +328,7 @@ def extract_embedding(employee_id: str, db: Session = Depends(get_db)) -> dict[s
 
 @router.get("/{employee_id}/access-history")
 def access_history(employee_id: str, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    employee = _resolve_employee(db, employee_id)
+    employee = resolve_employee(db, employee_id)
     if employee is None:
         return []
 

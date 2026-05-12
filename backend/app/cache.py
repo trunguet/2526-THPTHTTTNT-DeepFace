@@ -122,7 +122,6 @@ def set_json(key: str, value: Any, ttl_seconds: int) -> None:
     except Exception:
         with _stats_lock:
             _stats["set_err"] += 1
-        pass
     else:
         with _stats_lock:
             _stats["set_ok"] += 1

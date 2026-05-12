@@ -203,15 +203,47 @@ class ViewLogsModule {
    * View log details (can open modal or navigate to detail page)
    */
   viewDetails(logId) {
-    console.log('Viewing details for log:', logId);
-    // Can implement modal or navigate to detail page
+    const log = this.logs.find((item) => Number(item.id) === Number(logId));
+    if (!log) {
+      this.showError('Không tìm thấy nhật ký truy cập');
+      return;
+    }
+
+    const lines = [
+      `Nhân viên: ${log.employee_name || 'N/A'}`,
+      `Mã NV: ${log.employee_id || 'N/A'}`,
+      `Trạng thái: ${log.status === 'allowed' ? 'Cho phép' : 'Từ chối'}`,
+      `Thời gian: ${
+        window.DeepFaceAPI?.formatDateTime
+          ? window.DeepFaceAPI.formatDateTime(log.timestamp)
+          : new Date(log.timestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+      }`,
+      `Snapshot: ${log.image_url || 'N/A'}`,
+    ];
+    alert(lines.join('\n'));
   }
 
   /**
    * View alert details
    */
   viewAlertDetails(alertId) {
-    console.log('Viewing alert details:', alertId);
+    const alertItem = this.alerts.find((item) => Number(item.id) === Number(alertId));
+    if (!alertItem) {
+      this.showError('Không tìm thấy cảnh báo');
+      return;
+    }
+
+    const lines = [
+      'Cảnh báo người lạ',
+      `Thời gian: ${
+        window.DeepFaceAPI?.formatDateTime
+          ? window.DeepFaceAPI.formatDateTime(alertItem.timestamp)
+          : new Date(alertItem.timestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+      }`,
+      `Vị trí camera: ${alertItem.camera_location || 'N/A'}`,
+      `Snapshot: ${alertItem.image_url || 'N/A'}`,
+    ];
+    alert(lines.join('\n'));
   }
 
   /**

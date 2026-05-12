@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from typing import Optional
-
-import cv2
 import numpy as np
 
 
@@ -84,6 +82,8 @@ class FaceAligner:
         )
 
     def align(self, image_bgr: np.ndarray, detection: FaceDetection) -> np.ndarray:
+        import cv2
+
         if detection.landmarks_5 is None:
             return self.crop(image_bgr, detection.bbox_xyxy)
 
@@ -98,6 +98,8 @@ class FaceAligner:
         return cv2.warpAffine(image_bgr, transform, self.output_size, flags=cv2.INTER_LINEAR)
 
     def crop(self, image_bgr: np.ndarray, bbox_xyxy: tuple[int, int, int, int]) -> np.ndarray:
+        import cv2
+
         x1, y1, x2, y2 = bbox_xyxy
         crop = image_bgr[y1:y2, x1:x2]
         return cv2.resize(crop, self.output_size, interpolation=cv2.INTER_LINEAR)

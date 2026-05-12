@@ -1,3 +1,7 @@
+# Image-only Compose file for grading/release.
+# This file contains no local build sections; Docker Compose pulls every
+# project-owned image from BACKEND_IMAGE / FRONTEND_*_IMAGE / BACKUP_IMAGE.
+
 services:
   gateway:
     image: nginx:1.27-alpine
@@ -14,10 +18,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ${BACKEND_IMAGE:-deepface_backend:latest}
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE in .env.dockerhub}
     container_name: deepface_backend
     ports:
       - "18000:8000"
@@ -54,7 +55,7 @@ services:
       - ./model_cache:/root/.deepface/weights
 
   worker:
-    image: ${BACKEND_IMAGE:-deepface_backend:latest}
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE in .env.dockerhub}
     container_name: deepface_worker
     command: ["python", "-m", "app.worker"]
     environment:
@@ -87,10 +88,7 @@ services:
       - ./model_cache:/root/.deepface/weights
 
   frontend-home:
-    image: ${FRONTEND_HOME_IMAGE:-deepface_frontend_home:latest}
-    build:
-      context: .
-      dockerfile: frontend/home/Dockerfile
+    image: ${FRONTEND_HOME_IMAGE:?Set FRONTEND_HOME_IMAGE in .env.dockerhub}
     container_name: deepface_frontend_home
     ports:
       - "3000:80"
@@ -99,10 +97,7 @@ services:
       - frontend-user
 
   frontend-admin:
-    image: ${FRONTEND_ADMIN_IMAGE:-deepface_frontend_admin:latest}
-    build:
-      context: .
-      dockerfile: frontend/admin/Dockerfile
+    image: ${FRONTEND_ADMIN_IMAGE:?Set FRONTEND_ADMIN_IMAGE in .env.dockerhub}
     container_name: deepface_frontend_admin
     ports:
       - "3001:80"
@@ -110,10 +105,7 @@ services:
       - backend
 
   frontend-user:
-    image: ${FRONTEND_USER_IMAGE:-deepface_frontend_user:latest}
-    build:
-      context: .
-      dockerfile: frontend/user/Dockerfile
+    image: ${FRONTEND_USER_IMAGE:?Set FRONTEND_USER_IMAGE in .env.dockerhub}
     container_name: deepface_frontend_user
     ports:
       - "3002:80"
@@ -185,10 +177,7 @@ services:
       - qdrant_data:/qdrant/storage
 
   backup:
-    image: ${BACKUP_IMAGE:-deepface_backup:latest}
-    build:
-      context: ./backup_service
-      dockerfile: Dockerfile
+    image: ${BACKUP_IMAGE:?Set BACKUP_IMAGE in .env.dockerhub}
     container_name: deepface_backup
     environment:
       TZ: Asia/Ho_Chi_Minh

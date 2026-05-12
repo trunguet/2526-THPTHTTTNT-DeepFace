@@ -9,6 +9,11 @@
   const registerPanel = registerForm;
   const showLoginBtn = document.getElementById('show-login');
   const showRegisterBtn = document.getElementById('show-register');
+  const DIRECT_FRONTEND_PORTS = new Set(['3000', '3001', '3002']);
+
+  function defaultApiBaseURL() {
+    return DIRECT_FRONTEND_PORTS.has(window.location.port) ? 'http://localhost:18000' : '';
+  }
 
   function showMessage(message, type) {
     statusBox.textContent = message;
@@ -44,7 +49,7 @@
       return window.DeepFaceAPI.post(path, payload);
     }
 
-    const base = (window.DEEPFACE_API_BASE_URL || 'http://localhost:18000').replace(/\/$/, '');
+    const base = (window.DEEPFACE_API_BASE_URL || defaultApiBaseURL()).replace(/\/$/, '');
     const response = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,7 +68,7 @@
     if (window.DeepFaceAPI?.get) {
       return window.DeepFaceAPI.get(path);
     }
-    const base = (window.DEEPFACE_API_BASE_URL || 'http://localhost:18000').replace(/\/$/, '');
+    const base = (window.DEEPFACE_API_BASE_URL || defaultApiBaseURL()).replace(/\/$/, '');
     const response = await fetch(`${base}${path}`, { method: 'GET' });
     const contentType = response.headers.get('content-type') || '';
     const data = contentType.includes('application/json') ? await response.json() : await response.text();

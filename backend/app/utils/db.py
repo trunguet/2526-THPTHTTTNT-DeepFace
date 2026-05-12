@@ -88,17 +88,20 @@ def ensure_schema(conn: pymysql.connections.Connection) -> None:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS attendance_logs ("
             "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+            "employee_id BIGINT NULL,"
             "employee_code VARCHAR(50) NULL,"
             "scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
             "status ENUM('SUCCESS','FAILED','STRANGER') NOT NULL,"
-            "minio_snapshot_path VARCHAR(255) NULL"
-            ") CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            "minio_snapshot_path VARCHAR(255) NULL,"
+            "handled TINYINT DEFAULT 0"
+            ") ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
         )
 
     extra_columns = [
         ("employees", "employee_code VARCHAR(50) NULL"),
         ("employees", "email VARCHAR(100) NULL"),
         ("employees", "department VARCHAR(100) NULL"),
+        ("attendance_logs", "employee_id BIGINT NULL"),
         ("attendance_logs", "employee_code VARCHAR(50) NULL"),
         ("attendance_logs", "camera_id VARCHAR(64) NULL"),
         ("attendance_logs", "client_id VARCHAR(64) NULL"),
@@ -121,6 +124,26 @@ def ensure_schema(conn: pymysql.connections.Connection) -> None:
         if not _index_exists(conn, "employees", "ux_employees_employee_code"):
             cursor.execute("CREATE UNIQUE INDEX ux_employees_employee_code ON employees (employee_code)")
 
+        if _column_exists(conn, "attendance_logs", "employee_id") and _column_exists(
+            conn, "attendance_logs", "employee_code"
+        ):
+            cursor.execute(
+                "UPDATE attendance_logs al "
+                "JOIN employees e ON e.id = al.employee_id "
+                "SET al.employee_code = e.employee_code "
+                "WHERE al.employee_id IS NOT NULL "
+                "AND (al.employee_code IS NULL OR al.employee_code = '')"
+            )
+            cursor.execute(
+                "UPDATE attendance_logs al "
+                "JOIN employees e ON e.employee_code = al.employee_code "
+                "SET al.employee_id = e.id "
+                "WHERE al.employee_code IS NOT NULL AND al.employee_code <> '' "
+                "AND al.employee_id IS NULL"
+            )
+
         # Performance: look up "today" scans by employee efficiently.
         if not _index_exists(conn, "attendance_logs", "idx_attendance_employee_scan_time"):
             cursor.execute("CREATE INDEX idx_attendance_employee_scan_time ON attendance_logs (employee_code, scan_time)")
+        if not _index_exists(conn, "attendance_logs", "idx_attendance_employee_id_scan_time"):
+            cursor.execute("CREATE INDEX idx_attendance_employee_id_scan_time ON attendance_logs (employee_id, scan_time)")

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.ai import decode_base64_image, validate_image, verify_liveness_and_embedding
 from app.db import AttendanceLog, Employee, get_db
+from app.employee_lookup import resolve_employee
 from app.schemas import VerifyFaceRequest
 from app.storage import save_bytes
 from app.cache import bump_version
@@ -13,18 +14,13 @@ from app.cache import bump_version
 router = APIRouter(prefix="/api/access", tags=["access"])
 
 
-def _resolve_employee(db: Session, identifier: str | None) -> Employee | None:
-    value = str(identifier or "").strip()
-    if not value:
-        return None
-
-    employee = db.query(Employee).filter(Employee.employee_code == value).first()
-    if employee is not None:
-        return employee
-
-    if value.isdigit():
-        return db.query(Employee).filter(Employee.id == int(value)).first()
-    return None
+def _attendance_log(employee: Employee | None, status: str, snapshot_key: str) -> AttendanceLog:
+    return AttendanceLog(
+        employee_id=employee.id if employee else None,
+        employee_code=employee.employee_code if employee else None,
+        status=status,
+        minio_snapshot_path=snapshot_key,
+    )
 
 
 @router.post("/verify-face")
@@ -37,8 +33,8 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
 
     # Optional hint from client (used to link failed attempts to a known employee).
     # If the provided identifier does not exist, ignore it so face verification
-    # still works (the client might be in demo mode or misconfigured).
-    employee_hint = _resolve_employee(db, request.employee_id)
+    # still works even when the client is misconfigured.
+    employee_hint = resolve_employee(db, request.employee_id)
 
     snapshot_key, snapshot_url = save_bytes("audit/unknown", image_bytes)
 
@@ -46,11 +42,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     # If the client provides a failed result, reject immediately.
     if request.challenge_passed is False:
         linked_employee = employee_hint
-        log = AttendanceLog(
-            employee_code=linked_employee.employee_code if linked_employee else None,
-            status="FAILED",
-            minio_snapshot_path=snapshot_key,
-        )
+        log = _attendance_log(linked_employee, "FAILED", snapshot_key)
         db.add(log)
         db.commit()
         bump_version("access_logs")
@@ -77,7 +69,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
 
     if result.status == "accepted" and match is not None:
         matched_code = str(match.employee_id or "").strip() or None
-        employee = _resolve_employee(db, matched_code)
+        employee = resolve_employee(db, matched_code)
         db_id = payload.get("db_id")
         if db_id is None:
             # Backward/compat: some vector payloads may store the business id only.
@@ -91,18 +83,14 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         if employee is None:
             business_id = payload.get("employee_id") or payload.get("employee_code")
             if business_id:
-                employee = _resolve_employee(db, str(business_id))
+                employee = resolve_employee(db, business_id)
 
         # IMPORTANT:
         # - attendance_logs.employee_code must always equal employees.employee_code (business key).
         # - If the match cannot be resolved to an employee row, treat it as STRANGER.
         #   This usually happens when Qdrant still contains stale/test vectors (e.g. payload.employee_id = "1").
         if employee is None:
-            log = AttendanceLog(
-                employee_code=None,
-                status="STRANGER",
-                minio_snapshot_path=snapshot_key,
-            )
+            log = _attendance_log(None, "STRANGER", snapshot_key)
             db.add(log)
             db.commit()
             bump_version("access_logs")
@@ -115,11 +103,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
                 "image_url": snapshot_url,
             }
 
-        log = AttendanceLog(
-            employee_code=employee.employee_code,
-            status="SUCCESS",
-            minio_snapshot_path=snapshot_key,
-        )
+        log = _attendance_log(employee, "SUCCESS", snapshot_key)
         db.add(log)
         db.commit()
         bump_version("access_logs")
@@ -140,11 +124,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         if linked_employee is not None
         else ("STRANGER" if result.reason == "no_match" else "FAILED")
     )
-    log = AttendanceLog(
-        employee_code=linked_employee.employee_code if linked_employee else None,
-        status=log_status,
-        minio_snapshot_path=snapshot_key,
-    )
+    log = _attendance_log(linked_employee, log_status, snapshot_key)
     db.add(log)
     db.commit()
     bump_version("access_logs")

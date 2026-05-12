@@ -10,26 +10,50 @@
   <body>
     <main class="content" style="max-width: 520px; margin: 8vh auto">
       <div class="card">
-        <h1 class="card-title">Dang Nhap Nhan Vien</h1>
+        <h1 class="card-title">Đăng Nhập Nhân Viên</h1>
         <form id="user-login-form" style="display: grid; gap: 14px">
-          <input id="employee-id" placeholder="Ma nhan vien" value="EMP001" style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff" />
-          <input id="employee-name" placeholder="Ho ten" value="Nhan vien demo" style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff" />
-          <button class="btn btn-primary" type="submit">Bat Dau Demo</button>
-          <a class="btn btn-secondary" href="./index.html">Ve Trang User</a>
+          <input id="employee-id" placeholder="Mã nhân viên" required style="padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(124,196,237,0.35); border-radius: 8px; color: #fff" />
+          <button class="btn btn-primary" type="submit">Bắt Đầu Quét</button>
+          <a class="btn btn-secondary" href="./index.html">Về Trang User</a>
           <div id="login-status" style="display: none; color: #10b981"></div>
         </form>
       </div>
     </main>
     <script src="../shared/background.js"></script>
+    <script src="../shared/api.js"></script>
+    <script src="./api.js"></script>
     <script>
-      document.getElementById('user-login-form').addEventListener('submit', (event) => {
+      const form = document.getElementById('user-login-form');
+      const statusBox = document.getElementById('login-status');
+      const submitBtn = form.querySelector('button[type="submit"]');
+
+      function showStatus(message, type) {
+        statusBox.textContent = message;
+        statusBox.style.color = type === 'error' ? '#f87171' : '#10b981';
+        statusBox.style.display = 'block';
+      }
+
+      form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        localStorage.setItem('auth_token', 'demo-user-token');
-        localStorage.setItem('employee_id', document.getElementById('employee-id').value || 'EMP001');
-        localStorage.setItem('employee_name', document.getElementById('employee-name').value || 'Nhan vien demo');
-        document.getElementById('login-status').textContent = 'Da tao phien demo. Dang chuyen huong...';
-        document.getElementById('login-status').style.display = 'block';
-        setTimeout(() => (window.location.href = './index.html'), 500);
+        const employeeId = document.getElementById('employee-id').value.trim();
+        if (!employeeId) {
+          showStatus('Vui lòng nhập mã nhân viên.', 'error');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        showStatus('Đang kiểm tra mã nhân viên...', 'info');
+        try {
+          const employee = await window.DeepFaceAPI.get(`/api/employees/lookup/${encodeURIComponent(employeeId)}`);
+          localStorage.setItem('employee_id', employee.employee_id);
+          localStorage.setItem('employee_name', employee.full_name || employee.employee_id);
+          showStatus('Đã xác nhận nhân viên. Đang chuyển hướng...', 'success');
+          setTimeout(() => (window.location.href = './index.html'), 500);
+        } catch (error) {
+          showStatus(`Không tìm thấy nhân viên: ${error.message}`, 'error');
+        } finally {
+          submitBtn.disabled = false;
+        }
       });
     </script>
   </body>
