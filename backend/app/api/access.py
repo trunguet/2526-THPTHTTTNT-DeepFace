@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.ai import decode_base64_image, validate_image, verify_liveness_and_embedding
+from app.cache import bump_version
 from app.db import AttendanceLog, Employee, get_db
 from app.employee_lookup import resolve_employee
 from app.schemas import VerifyFaceRequest
 from app.storage import save_bytes
-from app.cache import bump_version
 
 
 router = APIRouter(prefix="/api/access", tags=["access"])
@@ -21,6 +21,19 @@ def _attendance_log(employee: Employee | None, status: str, snapshot_key: str) -
         status=status,
         minio_snapshot_path=snapshot_key,
     )
+
+
+def _record_attendance(
+    db: Session,
+    employee: Employee | None,
+    status: str,
+    snapshot_key: str,
+) -> AttendanceLog:
+    log = _attendance_log(employee, status, snapshot_key)
+    db.add(log)
+    db.commit()
+    bump_version("access_logs")
+    return log
 
 
 @router.post("/verify-face")
@@ -41,11 +54,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
     # Optional liveness challenge gate (computed client-side).
     # If the client provides a failed result, reject immediately.
     if request.challenge_passed is False:
-        linked_employee = employee_hint
-        log = _attendance_log(linked_employee, "FAILED", snapshot_key)
-        db.add(log)
-        db.commit()
-        bump_version("access_logs")
+        _record_attendance(db, employee_hint, "FAILED", snapshot_key)
         return {
             "status": "denied",
             "reason": "challenge_failed",
@@ -90,10 +99,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         # - If the match cannot be resolved to an employee row, treat it as STRANGER.
         #   This usually happens when Qdrant still contains stale/test vectors (e.g. payload.employee_id = "1").
         if employee is None:
-            log = _attendance_log(None, "STRANGER", snapshot_key)
-            db.add(log)
-            db.commit()
-            bump_version("access_logs")
+            _record_attendance(db, None, "STRANGER", snapshot_key)
             return {
                 "status": "stranger",
                 "reason": "unknown_employee",
@@ -103,10 +109,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
                 "image_url": snapshot_url,
             }
 
-        log = _attendance_log(employee, "SUCCESS", snapshot_key)
-        db.add(log)
-        db.commit()
-        bump_version("access_logs")
+        _record_attendance(db, employee, "SUCCESS", snapshot_key)
 
         return {
             "status": "allowed",
@@ -124,10 +127,7 @@ def verify_face(request: VerifyFaceRequest, db: Session = Depends(get_db)) -> di
         if linked_employee is not None
         else ("STRANGER" if result.reason == "no_match" else "FAILED")
     )
-    log = _attendance_log(linked_employee, log_status, snapshot_key)
-    db.add(log)
-    db.commit()
-    bump_version("access_logs")
+    _record_attendance(db, linked_employee, log_status, snapshot_key)
     message = {
         "spoof": "Kiểm tra chống giả mạo thất bại",
         "minifas_low_score": "MiniFAS score thấp, vui lòng thử lại",

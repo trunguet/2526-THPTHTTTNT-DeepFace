@@ -205,7 +205,7 @@ def reject_reason_from_metrics(
     if enforce_pose_gate and metrics.head_pitch_deg is not None and abs(metrics.head_pitch_deg) > max_head_pitch_deg:
         return "face_turned"
 
-    # Distance gate: approximate 50–100cm constraint using bbox ratios.
+    # Distance gate: approximate 50-100cm constraint using bbox ratios.
     if metrics.face_height_ratio >= max_face_height_ratio or metrics.face_area_ratio >= max_face_area_ratio:
         return "face_too_close"
 

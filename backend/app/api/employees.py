@@ -6,18 +6,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.ai import build_embedding, validate_image
+from app.cache import bump_version, get_json, set_json, versioned_key
+from app.config import CACHE_EMPLOYEES_TTL_SECONDS
 from app.db import AttendanceLog, Employee, EmployeeBackup, get_db
 from app.employee_lookup import resolve_employee
 from app.jobs import enqueue_embedding_job
 from app.schemas import EmployeeCreate, EmployeeUpdate
+from app.security import require_admin
 from app.storage import delete_object, read_bytes, save_bytes
 from app.vector_store import delete_employee_vector, init_collection, upsert_employee_vector
-from app.security import require_admin
-from app.cache import bump_version, get_json, set_json, versioned_key
-from app.config import CACHE_EMPLOYEES_TTL_SECONDS
 
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
+
+
+def _warn(message: str, exc: Exception) -> None:
+    print(f"[WARN] {message}: {exc}", flush=True)
 
 
 def _employee_to_dict(employee: Employee) -> dict[str, Any]:
@@ -63,6 +67,15 @@ def _index_employee(employee: Employee, db: Session) -> None:
     db.commit()
 
 
+def _enqueue_embedding(employee_id: int) -> bool:
+    try:
+        enqueue_embedding_job(employee_id)
+        return True
+    except Exception as exc:
+        _warn(f"Failed to enqueue embedding job for employee {employee_id}", exc)
+        return False
+
+
 @router.post("/upload-image", dependencies=[Depends(require_admin)])
 async def upload_image(file: UploadFile = File(...), employee_id: str = Form(...)) -> dict[str, str]:
     employee_id = str(employee_id or "").strip()
@@ -105,10 +118,7 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> d
         raise HTTPException(status_code=409, detail="Employee ID already exists")
 
     db.refresh(employee)
-    try:
-        enqueue_embedding_job(employee.id)
-    except Exception as exc:
-        print(f"[WARN] Failed to enqueue embedding job for employee {employee.id}: {exc}", flush=True)
+    _enqueue_embedding(employee.id)
 
     bump_version("employees")
     return _employee_to_dict(employee)
@@ -212,12 +222,10 @@ def reindex_all(db: Session = Depends(get_db)) -> dict[str, Any]:
         if not employee.minio_image_path:
             skipped += 1
             continue
-        try:
-            enqueue_embedding_job(employee.id)
+        if _enqueue_embedding(employee.id):
             queued += 1
-        except Exception as exc:
-            print(f"[WARN] Failed to enqueue embedding job for employee {employee.id}: {exc}", flush=True)
-            skipped += 1
+            continue
+        skipped += 1
 
     bump_version("employees")
     return {"status": "ok", "queued": queued, "skipped": skipped, "total": len(employees)}
@@ -237,7 +245,7 @@ def reset_qdrant_and_reindex(db: Session = Depends(get_db)) -> dict[str, Any]:
     try:
         client.delete_collection(collection_name=QDRANT_COLLECTION)
     except Exception as exc:
-        print(f"[WARN] Failed to delete Qdrant collection: {exc}", flush=True)
+        _warn("Failed to delete Qdrant collection", exc)
 
     init_collection()
     result = reindex_all(db)
@@ -272,7 +280,7 @@ def update_employee(employee_id: str, payload: EmployeeUpdate, db: Session = Dep
         try:
             _index_employee(employee, db)
         except Exception as exc:
-            print(f"[WARN] Failed to refresh Qdrant payload for employee {employee.id}: {exc}", flush=True)
+            _warn(f"Failed to refresh Qdrant payload for employee {employee.id}", exc)
 
     bump_version("employees")
     return _employee_to_dict(employee)
@@ -300,11 +308,11 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db)) -> dict[str
     try:
         delete_employee_vector(vector_id)
     except Exception as exc:
-        print(f"[WARN] Failed to delete Qdrant vector for employee {vector_id}: {exc}", flush=True)
+        _warn(f"Failed to delete Qdrant vector for employee {vector_id}", exc)
     try:
         delete_object(object_key)
     except Exception as exc:
-        print(f"[WARN] Failed to delete employee image {object_key}: {exc}", flush=True)
+        _warn(f"Failed to delete employee image {object_key}", exc)
 
     bump_version("employees")
     return {"status": "ok"}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from app.cache import cache_stats, get_version
+from app.cache import cache_stats, get_version, redis_key_ttls
 from app.security import require_admin
 
 
@@ -17,21 +17,7 @@ def cache_debug_stats() -> dict:
         "access_logs": get_version("access_logs"),
     }
 
-    # Best-effort: include some live Redis keys + TTLs (limited).
-    try:
-        from app.cache import _redis_client  # type: ignore
-
-        if _redis_client is not None:
-            keys: list[dict] = []
-            patterns = ["cache:employees:*", "cache:access_logs:*"]
-            for pattern in patterns:
-                for idx, key in enumerate(_redis_client.scan_iter(match=pattern, count=200)):
-                    if idx >= 25:
-                        break
-                    keys.append({"key": key, "ttl": int(_redis_client.ttl(key))})
-            payload["redis_keys"] = keys
-    except Exception:
-        pass
+    patterns = ["cache:employees:*", "cache:access_logs:*"]
+    payload["redis_keys"] = redis_key_ttls(patterns)
 
     return payload
-

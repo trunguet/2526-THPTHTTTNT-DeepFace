@@ -7,13 +7,13 @@ from collections import OrderedDict
 from typing import Any
 
 import redis
+from fastapi.encoders import jsonable_encoder
 
 from app.config import (
     CACHE_L1_MAX_ENTRIES,
     CACHE_REDIS_ENABLED,
     REDIS_URL,
 )
-from fastapi.encoders import jsonable_encoder
 
 
 class InMemoryTTLCache:
@@ -167,3 +167,19 @@ def cache_stats() -> dict[str, Any]:
         stats = dict(_stats)
     stats["redis_enabled"] = bool(_redis_client is not None)
     return stats
+
+
+def redis_key_ttls(patterns: list[str], *, max_keys_per_pattern: int = 25) -> list[dict[str, Any]]:
+    if _redis_client is None:
+        return []
+
+    keys: list[dict[str, Any]] = []
+    try:
+        for pattern in patterns:
+            for idx, key in enumerate(_redis_client.scan_iter(match=pattern, count=200)):
+                if idx >= max_keys_per_pattern:
+                    break
+                keys.append({"key": key, "ttl": int(_redis_client.ttl(key))})
+    except Exception:
+        return keys
+    return keys
