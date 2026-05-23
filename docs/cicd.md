@@ -221,9 +221,7 @@ Images hiện được build:
 deepface-backend
 deepface-worker
 deepface-frontend-user
-deepface-frontend-home
 deepface-frontend-admin
-deepface-cron-backup
 ```
 
 Mỗi image được tag 3 kiểu trong lúc build:
@@ -242,7 +240,7 @@ duclm2006/deepface-backend:554e3ca...
 duclm2006/deepface-backend:latest
 ```
 
-`docker-builds` luôn build image khi CI chạy. Khi push vào `main`, workflow publish image lên Docker Hub và yêu cầu repo có đủ Docker Hub secrets.
+`docker-builds` luôn build image khi CI chạy. Khi push vào `main`, workflow publish 4 Docker images lên Docker Hub với tag commit SHA và `latest`. Đây là artifact chính của pipeline, không phải file `.zip` hay GitHub Packages.
 
 ---
 
@@ -297,7 +295,7 @@ Nếu thiếu secret:
 
 ## 10. Docker Images Được Publish
 
-Khi push vào `main`, workflow push Docker Hub images:
+Khi push vào `main`, workflow push 4 Docker Hub images:
 
 ```text
 <dockerhub-username>/deepface-backend:<commit-sha>
@@ -309,14 +307,8 @@ Khi push vào `main`, workflow push Docker Hub images:
 <dockerhub-username>/deepface-frontend-user:<commit-sha>
 <dockerhub-username>/deepface-frontend-user:latest
 
-<dockerhub-username>/deepface-frontend-home:<commit-sha>
-<dockerhub-username>/deepface-frontend-home:latest
-
 <dockerhub-username>/deepface-frontend-admin:<commit-sha>
 <dockerhub-username>/deepface-frontend-admin:latest
-
-<dockerhub-username>/deepface-cron-backup:<commit-sha>
-<dockerhub-username>/deepface-cron-backup:latest
 ```
 
 Tag `<commit-sha>` dùng để deploy đúng version code.
@@ -345,12 +337,12 @@ Service này build được local từ:
 backup/cron
 ```
 
-Workflow `ci.yml` cũng build/push `deepface-cron-backup`, nên Docker Hub artifact khớp với các custom image trong `docker-compose.yml`.
+Workflow `ci.yml` hiện tập trung publish 4 artifact chính cho bài demo: backend, worker, frontend-user và frontend-admin. `deepface-cron-backup` vẫn build được local từ Docker Compose khi cần.
 
 Ý nghĩa:
 
 - `docker compose up --build -d` local vẫn chạy được vì Compose tự build từ `backup/cron`;
-- nếu triển khai bằng image pull thuần từ Docker Hub, service backup cũng có image sẵn.
+- nếu triển khai bằng image pull thuần từ Docker Hub, có thể bổ sung `deepface-cron-backup` vào pipeline sau.
 
 ---
 

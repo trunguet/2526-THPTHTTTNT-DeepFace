@@ -145,16 +145,6 @@ jobs:
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-user:latest" \
             frontend/user
 
-      - name: Build home frontend image
-        run: |
-          docker build \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            -t deepface-frontend-home:test \
-            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-home:$IMAGE_TAG" \
-            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-home:latest" \
-            frontend/home
-
       - name: Build admin frontend image
         run: |
           docker build \
@@ -165,16 +155,6 @@ jobs:
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:latest" \
             frontend/admin
 
-      - name: Build cron backup image
-        run: |
-          docker build \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            -t deepface-cron-backup:test \
-            -t "$DOCKERHUB_NAMESPACE/deepface-cron-backup:$IMAGE_TAG" \
-            -t "$DOCKERHUB_NAMESPACE/deepface-cron-backup:latest" \
-            backup/cron
-
       - name: Publish images to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.prepare_images.outputs.publish_images == 'true'
         run: |
@@ -184,9 +164,5 @@ jobs:
           docker push "$DOCKERHUB_NAMESPACE/deepface-worker:latest"
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-user:$IMAGE_TAG"
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-user:latest"
-          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-home:$IMAGE_TAG"
-          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-home:latest"
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:$IMAGE_TAG"
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:latest"
-          docker push "$DOCKERHUB_NAMESPACE/deepface-cron-backup:$IMAGE_TAG"
-          docker push "$DOCKERHUB_NAMESPACE/deepface-cron-backup:latest"
