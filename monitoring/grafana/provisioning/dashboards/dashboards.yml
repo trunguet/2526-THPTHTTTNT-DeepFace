@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: DeepFace Access
+    orgId: 1
+    folder: DeepFace Access
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
