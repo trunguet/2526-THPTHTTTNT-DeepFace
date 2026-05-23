@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  BACKEND_CORS_ORIGINS: {{ .Values.config.corsOrigins | quote }}
+  VITE_API_BASE_URL: {{ .Values.config.viteApiBaseUrl | quote }}
+  VITE_USER_BASE_PATH: {{ .Values.config.viteUserBasePath | quote }}
+  VITE_ADMIN_BASE_PATH: {{ .Values.config.viteAdminBasePath | quote }}
+  DEEPFACE_MODEL_NAME: {{ .Values.config.deepfaceModelName | quote }}
+  DEEPFACE_DETECTOR_BACKEND: {{ .Values.config.deepfaceDetectorBackend | quote }}
+  DEEPFACE_ENFORCE_DETECTION: {{ .Values.config.deepfaceEnforceDetection | quote }}
+  DEEPFACE_ALIGN: {{ .Values.config.deepfaceAlign | quote }}
+  DEEPFACE_NORMALIZATION: {{ .Values.config.deepfaceNormalization | quote }}
+  DEEPFACE_MATCH_THRESHOLD: {{ .Values.config.deepfaceMatchThreshold | quote }}
+  MINIO_ENDPOINT: {{ .Values.config.minioEndpoint | quote }}
+  MINIO_BUCKET: {{ .Values.config.minioBucket | quote }}
+  MINIO_SECURE: {{ .Values.config.minioSecure | quote }}
+  QDRANT_URL: {{ .Values.config.qdrantUrl | quote }}
+  QDRANT_COLLECTION: {{ .Values.config.qdrantCollection | quote }}

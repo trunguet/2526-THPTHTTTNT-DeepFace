@@ -1,0 +1,310 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-deepface_access}
+      POSTGRES_USER: ${POSTGRES_USER:-deepface}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deepface}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deepface} -d ${POSTGRES_DB:-deepface_access}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-seed:
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://deepface:deepface@database:5432/deepface_access}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
+      SEED_USER_USERNAME: ${SEED_USER_USERNAME:-user}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:-user123}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+    depends_on:
+      database:
+        condition: service_healthy
+    command: python -m app.db.seed
+    restart: "no"
+
+  backend:
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://deepface:deepface@database:5432/deepface_access}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-deepface-access-dev-secret}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      MAX_PROCESSING_ACCESS_LOGS_PER_CAMERA: ${MAX_PROCESSING_ACCESS_LOGS_PER_CAMERA:-3}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-deepface-images}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-deepface_embeddings}
+    volumes:
+      - ./data/smoke:/app/data/smoke
+    ports:
+      - "8000:8000"
+    depends_on:
+      db-seed:
+        condition: service_completed_successfully
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend-user:
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-frontend-user:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend/user
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_BASE_PATH: ${VITE_USER_BASE_PATH:-/user/}
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend-admin:
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-frontend-admin:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend/admin
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_BASE_PATH: ${VITE_ADMIN_BASE_PATH:-/admin/}
+    ports:
+      - "5174:80"
+    depends_on:
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/admin/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend-home:
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-frontend-home:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend/home
+    ports:
+      - "5172:80"
+    depends_on:
+      frontend-user:
+        condition: service_started
+      frontend-admin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-worker:${IMAGE_TAG:-latest}
+    build:
+      context: ./worker
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://deepface:deepface@database:5432/deepface_access}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DEEPFACE_MODEL_NAME: ${DEEPFACE_MODEL_NAME:-Facenet512}
+      DEEPFACE_DETECTOR_BACKEND: ${DEEPFACE_DETECTOR_BACKEND:-mtcnn}
+      DEEPFACE_ACCESS_DETECTOR_BACKEND: ${DEEPFACE_ACCESS_DETECTOR_BACKEND:-mtcnn}
+      DEEPFACE_FACE_COUNT_BACKEND: ${DEEPFACE_FACE_COUNT_BACKEND:-}
+      DEEPFACE_ENFORCE_DETECTION: ${DEEPFACE_ENFORCE_DETECTION:-true}
+      DEEPFACE_ALIGN: ${DEEPFACE_ALIGN:-false}
+      DEEPFACE_NORMALIZATION: ${DEEPFACE_NORMALIZATION:-base}
+      DEEPFACE_MATCH_THRESHOLD: ${DEEPFACE_MATCH_THRESHOLD:-0.70}
+      DEEPFACE_DUPLICATE_THRESHOLD: ${DEEPFACE_DUPLICATE_THRESHOLD:-0.95}
+      DEEPFACE_WARMUP_ON_START: ${DEEPFACE_WARMUP_ON_START:-true}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-deepface-images}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-deepface_embeddings}
+    volumes:
+      - ./data/smoke:/app/data/smoke
+      - deepface_weights:/root/.deepface/weights
+    depends_on:
+      db-seed:
+        condition: service_completed_successfully
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command: python -m app.main
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from app.config.redis import get_redis_client; get_redis_client().ping()",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend-home:
+        condition: service_healthy
+      frontend-user:
+        condition: service_healthy
+      frontend-admin:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      backend:
+        condition: service_started
+      alertmanager:
+        condition: service_started
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_started
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  cron-backup:
+    build:
+      context: ./backup/cron
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/deepface-cron-backup:${IMAGE_TAG:-latest}
+    restart: "unless-stopped"
+    environment:
+      # S3 / MinIO settings (defaults map to the minio service credentials)
+      S3_BUCKET: ${MINIO_BUCKET:-deepface-images}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      S3_PREFIX: ${S3_PREFIX:-deepface-db-backups}
+
+      # Postgres DB connection (point to the compose database service)
+      POSTGRES_HOST: ${POSTGRES_HOST:-database}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-deepface_access}
+      POSTGRES_USER: ${POSTGRES_USER:-deepface}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deepface}
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  minio_data:
+  qdrant_data:
+  deepface_weights:

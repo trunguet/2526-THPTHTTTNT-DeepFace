@@ -1,0 +1,5 @@
+# Reserved for dev-only overrides.
+#
+# The main local stack is defined in docker-compose.yml. Keep this file small and
+# use it only when a local machine needs overrides that should not affect the
+# default Phase 8 compose flow.

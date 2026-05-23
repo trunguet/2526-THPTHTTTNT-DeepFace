@@ -1,0 +1,62 @@
+groups:
+  - name: deepface-access
+    rules:
+      - alert: BackendMetricsDown
+        expr: up{job="deepface-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: Backend metrics endpoint is down
+          description: Prometheus cannot scrape backend /metrics for more than 1 minute.
+
+      - alert: DatabaseUnavailable
+        expr: deepface_database_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: Backend cannot reach PostgreSQL
+          description: Backend health metrics report PostgreSQL connectivity failure.
+
+      - alert: RedisUnavailable
+        expr: deepface_redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: Backend cannot reach Redis
+          description: Backend health metrics report Redis connectivity failure.
+
+      - alert: QueueBacklogHigh
+        expr: sum(deepface_queue_length) > 20
+        for: 5m
+        labels:
+          severity: warning
+          service: worker
+        annotations:
+          summary: Redis job queue backlog is high
+          description: Total queued embedding/access jobs has stayed above 20 for more than 5 minutes.
+
+      - alert: AccessProcessingBacklog
+        expr: deepface_access_logs_total{status="processing"} > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: worker
+        annotations:
+          summary: Access logs are stuck in processing
+          description: More than 10 access logs are still in processing state for more than 5 minutes.
+
+      - alert: AccessErrorsPresent
+        expr: deepface_access_logs_total{status="error"} > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: access-pipeline
+        annotations:
+          summary: Access pipeline has error logs
+          description: At least one access log is currently recorded with status=error.
