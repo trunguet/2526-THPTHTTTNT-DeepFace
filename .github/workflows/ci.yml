@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest backend/app/tests
+
+  worker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install worker system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
+      - name: Install worker dependencies
+        run: pip install -r worker/requirements.txt
+
+      - name: Run worker tests
+        env:
+          PYTHONPATH: worker
+        run: python -m pytest worker/app/tests
+
+  frontend-builds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/user/package-lock.json
+            frontend/admin/package-lock.json
+
+      - name: Build user frontend
+        working-directory: frontend/user
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build admin frontend
+        working-directory: frontend/admin
+        env:
+          VITE_BASE_PATH: /admin/
+        run: |
+          npm ci
+          npm run build
+
+  docker-builds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare image names
+        run: |
+          DOCKERHUB_NAMESPACE="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$DOCKERHUB_NAMESPACE" ]; then
+            DOCKERHUB_NAMESPACE="deepface-access"
+          fi
+          DOCKERHUB_NAMESPACE="$(echo "$DOCKERHUB_NAMESPACE" | tr '[:upper:]' '[:lower:]')"
+          echo "DOCKERHUB_NAMESPACE=$DOCKERHUB_NAMESPACE" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Login to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -t deepface-backend:test \
+            -t "$DOCKERHUB_NAMESPACE/deepface-backend:$IMAGE_TAG" \
+            -t "$DOCKERHUB_NAMESPACE/deepface-backend:latest" \
+            backend
+
+      - name: Build worker image
+        run: |
+          docker build \
+            -t deepface-worker:test \
+            -t "$DOCKERHUB_NAMESPACE/deepface-worker:$IMAGE_TAG" \
+            -t "$DOCKERHUB_NAMESPACE/deepface-worker:latest" \
+            worker
+
+      - name: Build user frontend image
+        run: |
+          docker build \
+            -t deepface-frontend-user:test \
+            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-user:$IMAGE_TAG" \
+            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-user:latest" \
+            frontend/user
+
+      - name: Build home frontend image
+        run: |
+          docker build \
+            -t deepface-frontend-home:test \
+            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-home:$IMAGE_TAG" \
+            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-home:latest" \
+            frontend/home
+
+      - name: Build admin frontend image
+        run: |
+          docker build \
+            -t deepface-frontend-admin:test \
+            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:$IMAGE_TAG" \
+            -t "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:latest" \
+            frontend/admin
+
+      - name: Publish images to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push "$DOCKERHUB_NAMESPACE/deepface-backend:$IMAGE_TAG"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-backend:latest"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-worker:$IMAGE_TAG"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-worker:latest"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-user:$IMAGE_TAG"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-user:latest"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-home:$IMAGE_TAG"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-home:latest"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:$IMAGE_TAG"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:latest"
