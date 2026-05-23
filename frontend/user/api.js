@@ -1,1 +1,0 @@
-window.DeepFaceUser = window.DeepFaceAPI;

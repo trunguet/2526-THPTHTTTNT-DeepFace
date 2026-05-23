@@ -1,4 +1,0 @@
-# Do not commit real secrets
-secret.yaml
-secret.*.yaml
-

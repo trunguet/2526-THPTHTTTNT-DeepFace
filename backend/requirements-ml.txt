@@ -1,8 +1,0 @@
-opencv-python-headless==4.10.0.84
-torch==2.5.1+cpu
-torchvision==0.20.1+cpu
-ultralytics==8.3.40
-tensorflow==2.15.1
-tf-keras==2.15.1
-deepface==0.0.93
-h5py==3.12.1
