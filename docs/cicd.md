@@ -290,7 +290,7 @@ DOCKERHUB_TOKEN
 Nếu thiếu secret:
 
 - CI vẫn có thể chạy test/build;
-- bước login/push Docker Hub sẽ fail khi push main.
+- bước login/push Docker Hub sẽ được bỏ qua khi push main.
 
 ---
 
