@@ -240,7 +240,7 @@ duclm2006/deepface-backend:554e3ca...
 duclm2006/deepface-backend:latest
 ```
 
-`docker-builds` luôn build image khi CI chạy. Khi push vào `main`, workflow publish 4 Docker images lên Docker Hub với tag commit SHA và `latest`. Đây là artifact chính của pipeline, không phải file `.zip` hay GitHub Packages.
+`docker-builds` luôn build image khi CI chạy. Khi push vào `main`, workflow publish 4 Docker images lên Docker Hub với tag commit SHA và `latest`, đồng thời publish 4 GitHub Packages để repo hiển thị package artifacts.
 
 ---
 
@@ -289,13 +289,30 @@ DOCKERHUB_TOKEN
 Nếu thiếu secret:
 
 - CI vẫn có thể chạy test/build trên pull request hoặc branch khác;
-- job `docker-builds` sẽ fail rõ ràng khi push `main` để tránh chạy thành công nhưng không có Docker Hub artifact.
+- GitHub Packages vẫn được publish khi push `main`;
+- Docker Hub publish sẽ fail rõ ràng nếu thiếu secrets, để tránh chạy thành công nhưng không có Docker Hub artifact.
 
 ---
 
 ## 10. Docker Images Được Publish
 
-Khi push vào `main`, workflow push 4 Docker Hub images:
+Khi push vào `main`, workflow luôn push 4 GitHub Packages:
+
+```text
+ghcr.io/<github-owner>/facial-recognition-system/backend:<commit-sha>
+ghcr.io/<github-owner>/facial-recognition-system/backend:latest
+
+ghcr.io/<github-owner>/facial-recognition-system/frontend-user:<commit-sha>
+ghcr.io/<github-owner>/facial-recognition-system/frontend-user:latest
+
+ghcr.io/<github-owner>/facial-recognition-system/worker:<commit-sha>
+ghcr.io/<github-owner>/facial-recognition-system/worker:latest
+
+ghcr.io/<github-owner>/facial-recognition-system/frontend-admin:<commit-sha>
+ghcr.io/<github-owner>/facial-recognition-system/frontend-admin:latest
+```
+
+Workflow cũng push 4 Docker Hub images:
 
 ```text
 <dockerhub-username>/deepface-backend:<commit-sha>

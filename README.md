@@ -503,6 +503,7 @@ GitHub Actions trong `.github/workflows/ci.yml` đang làm các bước:
 - Chạy worker tests trên Python 3.12.
 - Build user/admin frontend bằng Node 22.
 - Build 4 Docker images: backend, worker, frontend-user, frontend-admin.
+- Push 4 GitHub Packages trên branch `main`: `facial-recognition-system/backend`, `facial-recognition-system/frontend-user`, `facial-recognition-system/worker`, `facial-recognition-system/frontend-admin`.
 - Push các image lên Docker Hub trên branch `main` với tag `latest` và commit SHA.
 
 Kiểm tra sẵn sàng Docker Hub:
