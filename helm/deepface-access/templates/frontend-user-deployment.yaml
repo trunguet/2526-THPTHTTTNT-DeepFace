@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-frontend-user
+spec:
+  replicas: {{ .Values.frontendUser.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-frontend-user
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-frontend-user
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend-user
+          image: {{ printf "%s/%s:%s" (.Values.global.imageRegistry | trimSuffix "/") .Values.frontendUser.imageRepository .Values.global.imageTag | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontendUser.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-frontend-user
+spec:
+  selector:
+    app: {{ .Release.Name }}-frontend-user
+  ports:
+    - port: {{ .Values.frontendUser.port }}
+      targetPort: {{ .Values.frontendUser.port }}

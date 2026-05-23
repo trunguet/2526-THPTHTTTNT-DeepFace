@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-frontend-admin
+spec:
+  replicas: {{ .Values.frontendAdmin.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-frontend-admin
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-frontend-admin
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend-admin
+          image: {{ printf "%s/%s:%s" (.Values.global.imageRegistry | trimSuffix "/") .Values.frontendAdmin.imageRepository .Values.global.imageTag | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontendAdmin.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-frontend-admin
+spec:
+  selector:
+    app: {{ .Release.Name }}-frontend-admin
+  ports:
+    - port: {{ .Values.frontendAdmin.port }}
+      targetPort: {{ .Values.frontendAdmin.port }}
