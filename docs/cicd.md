@@ -223,6 +223,7 @@ deepface-worker
 deepface-frontend-user
 deepface-frontend-home
 deepface-frontend-admin
+deepface-cron-backup
 ```
 
 Mỗi image được tag 3 kiểu trong lúc build:
@@ -241,7 +242,7 @@ duclm2006/deepface-backend:554e3ca...
 duclm2006/deepface-backend:latest
 ```
 
-`docker-builds` luôn build image khi CI chạy. Nhưng chỉ push lên Docker Hub khi push vào `main`.
+`docker-builds` luôn build image khi CI chạy. Khi push vào `main`, workflow publish image lên Docker Hub và yêu cầu repo có đủ Docker Hub secrets.
 
 ---
 
@@ -289,14 +290,14 @@ DOCKERHUB_TOKEN
 
 Nếu thiếu secret:
 
-- CI vẫn có thể chạy test/build;
-- bước login/push Docker Hub sẽ được bỏ qua khi push main.
+- CI vẫn có thể chạy test/build trên pull request hoặc branch khác;
+- job `docker-builds` sẽ fail rõ ràng khi push `main` để tránh chạy thành công nhưng không có Docker Hub artifact.
 
 ---
 
 ## 10. Docker Images Được Publish
 
-Khi push vào `main`, workflow push:
+Khi push vào `main`, workflow push Docker Hub images:
 
 ```text
 <dockerhub-username>/deepface-backend:<commit-sha>
@@ -313,6 +314,9 @@ Khi push vào `main`, workflow push:
 
 <dockerhub-username>/deepface-frontend-admin:<commit-sha>
 <dockerhub-username>/deepface-frontend-admin:latest
+
+<dockerhub-username>/deepface-cron-backup:<commit-sha>
+<dockerhub-username>/deepface-cron-backup:latest
 ```
 
 Tag `<commit-sha>` dùng để deploy đúng version code.
@@ -321,7 +325,7 @@ Tag `latest` dùng cho môi trường dev/trình bày nhanh.
 
 ---
 
-## 11. Image Chưa Publish Trong CI
+## 11. Image Backup
 
 Docker Compose hiện có thêm service:
 
@@ -341,13 +345,12 @@ Service này build được local từ:
 backup/cron
 ```
 
-Workflow `ci.yml` hiện tập trung build/push các image app chính; `deepface-cron-backup` có thể bổ sung vào pipeline ở bước mở rộng.
+Workflow `ci.yml` cũng build/push `deepface-cron-backup`, nên Docker Hub artifact khớp với các custom image trong `docker-compose.yml`.
 
 Ý nghĩa:
 
 - `docker compose up --build -d` local vẫn chạy được vì Compose tự build từ `backup/cron`;
-- `docker compose up --build -d` local vẫn chạy được vì Compose tự build từ `backup/cron`;
-- nếu triển khai bằng image pull thuần từ Docker Hub, nên bổ sung build/push `deepface-cron-backup` vào job `docker-builds`.
+- nếu triển khai bằng image pull thuần từ Docker Hub, service backup cũng có image sẵn.
 
 ---
 

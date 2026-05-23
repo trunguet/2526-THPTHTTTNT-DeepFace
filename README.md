@@ -502,8 +502,8 @@ GitHub Actions trong `.github/workflows/ci.yml` đang làm các bước:
 - Chạy backend tests trên Python 3.12.
 - Chạy worker tests trên Python 3.12.
 - Build user/admin frontend bằng Node 22.
-- Build Docker images cho backend, worker, frontend-home, frontend-user, frontend-admin.
-- Push images lên Docker Hub trên branch `main` nếu repo có secrets `DOCKERHUB_USERNAME` và `DOCKERHUB_TOKEN`.
+- Build Docker images cho backend, worker, frontend-home, frontend-user, frontend-admin, cron-backup.
+- Push images lên Docker Hub trên branch `main`; repo cần có secrets `DOCKERHUB_USERNAME` và `DOCKERHUB_TOKEN`.
 
 Kiểm tra sẵn sàng Docker Hub:
 

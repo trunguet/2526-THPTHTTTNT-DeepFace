@@ -102,6 +102,12 @@ jobs:
             echo "publish_images=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validate Docker Hub credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.prepare_images.outputs.publish_images != 'true'
+        run: |
+          echo "Docker Hub publish requires repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN."
+          exit 1
+
       - name: Login to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.prepare_images.outputs.publish_images == 'true'
         env:
@@ -112,6 +118,8 @@ jobs:
       - name: Build backend image
         run: |
           docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t deepface-backend:test \
             -t "$DOCKERHUB_NAMESPACE/deepface-backend:$IMAGE_TAG" \
             -t "$DOCKERHUB_NAMESPACE/deepface-backend:latest" \
@@ -120,6 +128,8 @@ jobs:
       - name: Build worker image
         run: |
           docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t deepface-worker:test \
             -t "$DOCKERHUB_NAMESPACE/deepface-worker:$IMAGE_TAG" \
             -t "$DOCKERHUB_NAMESPACE/deepface-worker:latest" \
@@ -128,6 +138,8 @@ jobs:
       - name: Build user frontend image
         run: |
           docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t deepface-frontend-user:test \
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-user:$IMAGE_TAG" \
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-user:latest" \
@@ -136,6 +148,8 @@ jobs:
       - name: Build home frontend image
         run: |
           docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t deepface-frontend-home:test \
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-home:$IMAGE_TAG" \
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-home:latest" \
@@ -144,10 +158,22 @@ jobs:
       - name: Build admin frontend image
         run: |
           docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t deepface-frontend-admin:test \
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:$IMAGE_TAG" \
             -t "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:latest" \
             frontend/admin
+
+      - name: Build cron backup image
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t deepface-cron-backup:test \
+            -t "$DOCKERHUB_NAMESPACE/deepface-cron-backup:$IMAGE_TAG" \
+            -t "$DOCKERHUB_NAMESPACE/deepface-cron-backup:latest" \
+            backup/cron
 
       - name: Publish images to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.prepare_images.outputs.publish_images == 'true'
@@ -162,3 +188,5 @@ jobs:
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-home:latest"
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:$IMAGE_TAG"
           docker push "$DOCKERHUB_NAMESPACE/deepface-frontend-admin:latest"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-cron-backup:$IMAGE_TAG"
+          docker push "$DOCKERHUB_NAMESPACE/deepface-cron-backup:latest"
