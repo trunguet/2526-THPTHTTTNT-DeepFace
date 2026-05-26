@@ -312,8 +312,8 @@ flowchart TB
 ### 1. Clone Và Tạo Env
 
 ```powershell
-git clone https://github.com/lmd-2510/facial-recognition-system.git
-cd facial-recognition-system
+git clone https://github.com/trunguet/2526-THPTHTTTNT-DeepFace.git
+cd 2526-THPTHTTTNT-DeepFace
 Copy-Item .env.example .env
 ```
 
