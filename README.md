@@ -114,6 +114,21 @@
 | Helm chart | <img src="https://img.shields.io/badge/BONUS-6366F1?style=flat-square"> | `helm/deepface-access` |
 | Backup script | <img src="https://img.shields.io/badge/BONUS-6366F1?style=flat-square"> | `scripts/backup.ps1`, `scripts/backup-s3.ps1` |
 
+## Phân Công Và Phối Hợp Nhóm
+
+Nhóm phân công theo bốn module chính: **Backend/API**, **AI/Worker**,
+**Frontend** và **DevOps/Docs/QA**. Mỗi thành viên chịu trách nhiệm chính cho
+một module, đồng thời cùng tích hợp và kiểm thử các điểm giao nhau trong luồng
+end-to-end của hệ thống:
+
+```text
+Frontend -> Backend API -> Redis Queue -> AI Worker -> PostgreSQL / MinIO / Qdrant
+```
+
+
+Chi tiết phân công, phạm vi phối hợp và nguyên tắc hỗ trợ trả lời khi bảo vệ:
+[`docs/team-roles.md`](docs/team-roles.md).
+
 ## Điểm Nhấn Sản Phẩm
 
 <table>
