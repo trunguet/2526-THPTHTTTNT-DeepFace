@@ -37,6 +37,14 @@ def get_employee(db: Session, employee_id: int) -> Employee | None:
 def add_employee(db: Session, payload: EmployeeCreate) -> Employee:
     existing_employee = get_employee_by_code(db, payload.code)
     if existing_employee is not None:
+        if existing_employee.status == "inactive":
+            reactivation_payload = EmployeeUpdate(
+                code=payload.code,
+                name=payload.name,
+                department=payload.department,
+                status="active",
+            )
+            return update_employee(db, existing_employee, reactivation_payload)
         raise EmployeeCodeAlreadyExistsError
 
     return create_employee(db, payload)
