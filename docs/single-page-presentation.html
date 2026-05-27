@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeepFace Access Control | Single Page</title>
+    <style>
+      :root {
+        --bg: #071b1a;
+        --panel: #0c2725;
+        --panel-2: #10322f;
+        --line: rgba(173, 210, 199, 0.18);
+        --text: #eef5f0;
+        --muted: #a5bab4;
+        --green: #3bd690;
+        --green-soft: #98f2c3;
+        --mint: #daf8e8;
+        --red: #ff8776;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      figure {
+        margin: 0;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        overflow-x: hidden;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #041311;
+        color: var(--text);
+        font-family: "Segoe UI", Inter, Arial, sans-serif;
+      }
+
+      .slide {
+        position: relative;
+        width: min(100vw, calc(100vh * 16 / 9));
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: clamp(12px, 1.45vw, 22px);
+        padding: clamp(22px, 2.4vw, 40px);
+        background:
+          linear-gradient(90deg, rgba(53, 100, 92, 0.08) 1px, transparent 1px),
+          linear-gradient(rgba(53, 100, 92, 0.08) 1px, transparent 1px),
+          linear-gradient(120deg, #061a18 0%, #0b2422 58%, #081c19 100%);
+        background-size: 46px 46px, 46px 46px, 100% 100%;
+      }
+
+      .slide::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border: 1px solid rgba(130, 177, 166, 0.22);
+      }
+
+      .header {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--green-soft);
+        font-size: clamp(10px, 0.72vw, 13px);
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .brand-mark {
+        width: clamp(28px, 2.1vw, 34px);
+        height: clamp(28px, 2.1vw, 34px);
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(59, 214, 144, 0.55);
+        background: rgba(59, 214, 144, 0.14);
+        color: var(--green);
+        font-size: 18px;
+        border-radius: 6px;
+      }
+
+      .course {
+        max-width: 450px;
+        text-align: right;
+        color: var(--muted);
+        font-size: clamp(9px, 0.65vw, 12px);
+        line-height: 1.55;
+        text-transform: uppercase;
+      }
+
+      .course strong {
+        display: block;
+        color: var(--mint);
+        font-weight: 600;
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1.02fr 0.98fr;
+        gap: clamp(20px, 2.2vw, 36px);
+      }
+
+      .content > * {
+        min-width: 0;
+      }
+
+      .overview {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .eyebrow {
+        margin: 0 0 clamp(10px, 0.8vw, 14px);
+        color: var(--green);
+        font-size: clamp(9px, 0.66vw, 11px);
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 570px;
+        color: var(--white);
+        font-size: clamp(35px, 3.25vw, 54px);
+        font-weight: 720;
+        line-height: 1.04;
+        letter-spacing: 0;
+      }
+
+      .purpose {
+        margin: clamp(12px, 1.1vw, 18px) 0 0;
+        max-width: 560px;
+        color: #d0dfda;
+        font-size: clamp(12px, 0.91vw, 16px);
+        line-height: 1.52;
+      }
+
+      .pipeline {
+        margin-top: clamp(15px, 1.3vw, 22px);
+        width: 100%;
+        max-width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: clamp(5px, 0.45vw, 8px);
+        color: var(--green-soft);
+        font-size: clamp(9px, 0.62vw, 11px);
+        font-weight: 650;
+      }
+
+      .pipeline span {
+        padding: clamp(5px, 0.43vw, 7px) clamp(8px, 0.58vw, 10px);
+        border: 1px solid rgba(70, 160, 128, 0.4);
+        border-radius: 5px;
+        background: rgba(8, 44, 38, 0.74);
+        white-space: nowrap;
+      }
+
+      .pipeline i {
+        color: #5ea691;
+        font-style: normal;
+      }
+
+      .stack-title {
+        margin: clamp(16px, 1.45vw, 24px) 0 clamp(9px, 0.7vw, 12px);
+        color: var(--muted);
+        font-size: clamp(9px, 0.62vw, 11px);
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .checks {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: clamp(6px, 0.55vw, 9px);
+        max-width: 600px;
+      }
+
+      .check {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: clamp(5px, 0.42vw, 7px) clamp(8px, 0.58vw, 11px);
+        border-radius: 5px;
+        border: 1px solid var(--line);
+        background: rgba(18, 48, 44, 0.74);
+        color: #e1ebe6;
+        font-size: clamp(9px, 0.64vw, 11px);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .check::before {
+        content: "✓";
+        color: var(--green);
+        font-weight: 800;
+      }
+
+      .bonus {
+        margin-top: clamp(13px, 1vw, 17px);
+        color: #9bcab9;
+        font-size: clamp(9px, 0.62vw, 11px);
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .bonus strong {
+        color: var(--green);
+        margin-right: 8px;
+        text-transform: uppercase;
+      }
+
+      .demo-flow {
+        margin-top: auto;
+        padding-top: clamp(15px, 1.3vw, 22px);
+      }
+
+      .demo-cases {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: clamp(7px, 0.55vw, 9px);
+      }
+
+      .demo-case {
+        min-height: clamp(53px, 4vw, 68px);
+        padding: clamp(8px, 0.55vw, 10px);
+        border-left: 2px solid rgba(59, 214, 144, 0.65);
+        background: rgba(14, 43, 39, 0.64);
+      }
+
+      .demo-case b {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--green);
+        font-size: clamp(8px, 0.54vw, 10px);
+      }
+
+      .demo-case strong {
+        display: block;
+        color: var(--mint);
+        font-size: clamp(10px, 0.7vw, 12px);
+        font-weight: 600;
+      }
+
+      .demo-case small {
+        color: var(--muted);
+        font-size: clamp(8px, 0.53vw, 9px);
+        overflow-wrap: anywhere;
+      }
+
+      .visuals {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        gap: clamp(9px, 0.75vw, 13px);
+      }
+
+      .primary-shot {
+        position: relative;
+        min-height: 0;
+        padding: clamp(5px, 0.42vw, 7px);
+        border: 1px solid rgba(102, 166, 147, 0.34);
+        border-radius: 7px;
+        background: rgba(11, 38, 35, 0.9);
+        box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+      }
+
+      .primary-shot img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        object-position: top center;
+        border-radius: 4px;
+      }
+
+      .live {
+        position: absolute;
+        top: clamp(13px, 0.9vw, 16px);
+        left: clamp(13px, 0.9vw, 16px);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px;
+        border-radius: 5px;
+        background: rgba(5, 24, 21, 0.88);
+        color: var(--green-soft);
+        font-size: clamp(9px, 0.6vw, 10px);
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .live::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      .thumbnails {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: clamp(9px, 0.75vw, 13px);
+        height: clamp(72px, 7vw, 118px);
+      }
+
+      .thumb {
+        display: grid;
+        grid-template-columns: minmax(100px, 56%) 1fr;
+        align-items: center;
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+      }
+
+      .thumb img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        object-position: top left;
+      }
+
+      .thumb-copy {
+        min-width: 0;
+        padding: 8px 9px;
+        color: var(--muted);
+        font-size: clamp(8px, 0.58vw, 10px);
+        text-transform: uppercase;
+      }
+
+      .thumb-copy strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--mint);
+        font-size: clamp(9px, 0.68vw, 12px);
+        text-transform: none;
+      }
+
+      .footer {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: stretch;
+        gap: clamp(10px, 0.9vw, 15px);
+      }
+
+      .team-heading {
+        width: clamp(120px, 9vw, 145px);
+        padding: clamp(9px, 0.65vw, 12px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-left: 3px solid var(--green);
+        background: rgba(10, 37, 33, 0.68);
+        color: var(--muted);
+        font-size: clamp(8px, 0.56vw, 10px);
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .team-heading strong {
+        margin-top: 4px;
+        color: var(--mint);
+        font-size: clamp(12px, 0.84vw, 15px);
+      }
+
+      .members {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: clamp(6px, 0.55vw, 9px);
+      }
+
+      .member {
+        min-width: 0;
+        padding: clamp(8px, 0.62vw, 11px) clamp(8px, 0.65vw, 12px);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: rgba(13, 42, 39, 0.73);
+        color: #e7f1ec;
+        font-size: clamp(10px, 0.68vw, 12px);
+        font-weight: 600;
+      }
+
+      .member small {
+        display: block;
+        margin-bottom: 5px;
+        color: #85aa9f;
+        font-size: clamp(8px, 0.53vw, 9px);
+        text-transform: uppercase;
+      }
+
+      .ready {
+        min-width: clamp(150px, 12vw, 190px);
+        padding: clamp(9px, 0.7vw, 12px) clamp(10px, 0.9vw, 15px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border: 1px solid rgba(59, 214, 144, 0.33);
+        border-radius: 5px;
+        background: rgba(26, 90, 69, 0.18);
+        color: var(--muted);
+        font-size: clamp(8px, 0.56vw, 10px);
+        text-transform: uppercase;
+      }
+
+      .ready strong {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 5px;
+        color: var(--green-soft);
+        font-size: clamp(11px, 0.78vw, 14px);
+      }
+
+      .ready strong::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      @media (max-width: 900px) {
+        body {
+          display: block;
+        }
+
+        .slide {
+          width: 100%;
+          min-height: 100vh;
+          aspect-ratio: auto;
+          grid-template-rows: auto auto auto;
+        }
+
+        .content,
+        .footer {
+          grid-template-columns: 1fr;
+        }
+
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .course {
+          max-width: 100%;
+          text-align: left;
+        }
+
+        .visuals {
+          height: auto;
+          grid-template-rows: auto auto;
+        }
+
+        .primary-shot {
+          aspect-ratio: 1.22;
+        }
+
+        .thumbnails {
+          height: auto;
+          grid-template-columns: 1fr;
+        }
+
+        .thumb {
+          min-height: 100px;
+        }
+
+        .members {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .demo-cases {
+          grid-template-columns: 1fr;
+        }
+
+        .pipeline,
+        .checks {
+          gap: 6px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="slide" aria-label="Slide gioi thieu he thong DeepFace Access Control">
+      <header class="header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">◉</span>
+          AI Face Recognition / Access Control
+        </div>
+        <div class="course">
+          <strong>Thực hành phát triển hệ thống trí tuệ nhân tạo</strong>
+          Học kỳ 2 - 2025-2026 | Trường Đại học Công nghệ, ĐHQGHN
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="overview">
+          <p class="eyebrow">Real-time employee verification platform</p>
+          <h1>DeepFace<br />Access Control</h1>
+          <p class="purpose">
+            Hệ thống xác minh khuôn mặt nhân viên tại cổng ra vào, xử lý AI theo
+            thời gian thực và lưu vết quyết định truy cập cho quản trị viên.
+          </p>
+
+          <div class="pipeline" aria-label="Luong xu ly">
+            <span>Camera</span><i>→</i>
+            <span>FastAPI</span><i>→</i>
+            <span>Redis Queue</span><i>→</i>
+            <span>DeepFace</span><i>→</i>
+            <span>Qdrant</span>
+          </div>
+
+          <p class="stack-title">Technology checklist</p>
+          <div class="checks">
+            <span class="check">React + Vite</span>
+            <span class="check">FastAPI</span>
+            <span class="check">DeepFace</span>
+            <span class="check">PostgreSQL</span>
+            <span class="check">MinIO</span>
+            <span class="check">Qdrant</span>
+            <span class="check">Redis Queue</span>
+            <span class="check">Nginx</span>
+          </div>
+          <p class="bonus">
+            <strong>Advanced</strong> Docker Compose · CI/CD + Docker Hub ·
+            Prometheus / Grafana · Helm · Backup
+          </p>
+
+          <div class="demo-flow">
+            <p class="stack-title">Demo flow</p>
+            <div class="demo-cases">
+              <div class="demo-case">
+                <b>01</b>
+                <strong>Enroll</strong>
+                <small>Employee face data</small>
+              </div>
+              <div class="demo-case">
+                <b>02</b>
+                <strong>Verify</strong>
+                <small>Granted / Denied</small>
+              </div>
+              <div class="demo-case">
+                <b>03</b>
+                <strong>Audit</strong>
+                <small>Admin access logs</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="visuals">
+          <figure class="primary-shot">
+            <span class="live">User terminal</span>
+            <img
+              src="screenshots/user-access.png"
+              alt="Giao dien xac minh khuon mat tai cong truy cap"
+            />
+          </figure>
+          <div class="thumbnails">
+            <figure class="thumb">
+              <img src="screenshots/admin-dashboard.png" alt="Admin console" />
+              <figcaption class="thumb-copy">
+                Control
+                <strong>Admin Console</strong>
+              </figcaption>
+            </figure>
+            <figure class="thumb">
+              <img src="screenshots/home.png" alt="Trang chon vai tro truy cap" />
+              <figcaption class="thumb-copy">
+                Entry
+                <strong>Role Portal</strong>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="team-heading">
+          Nhóm thực hiện
+          <strong>04 Members</strong>
+        </div>
+        <div class="members" aria-label="Phan cong thanh vien">
+          <div class="member"><small>Nguyễn Quang Trường</small>Backend &amp; API</div>
+          <div class="member"><small>Phạm Sỹ Toàn</small>AI &amp; Worker</div>
+          <div class="member"><small>Nguyễn Đức Trung</small>Frontend</div>
+          <div class="member"><small>Lê Minh Đức</small>DevOps / QA</div>
+        </div>
+        <div class="ready">
+          Demo status
+          <strong>Docker Ready</strong>
+        </div>
+      </footer>
+    </main>
+  </body>
+</html>
