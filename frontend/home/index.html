@@ -137,6 +137,42 @@
         backdrop-filter: blur(10px);
       }
 
+      .home-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .home-clock {
+        display: grid;
+        gap: 6px;
+        padding: 14px 18px;
+        border: 1px solid rgba(188, 232, 216, 0.24);
+        border-radius: 8px;
+        background: rgba(8, 45, 40, 0.42);
+        text-align: right;
+      }
+
+      .clock-label {
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--cyan-soft);
+        font-weight: 800;
+      }
+
+      .clock-time {
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 1px;
+      }
+
+      .clock-date {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
       .bot-mark {
         display: grid;
         width: 92px;
@@ -307,6 +343,16 @@
           padding: 26px;
         }
 
+        .home-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .home-clock {
+          width: 100%;
+          text-align: left;
+        }
+
         .role-grid {
           grid-template-columns: 1fr;
         }
@@ -321,8 +367,15 @@
   <body>
     <main>
       <section class="home-panel" aria-labelledby="home-title">
-        <div class="bot-mark" aria-hidden="true">
-          <div class="bot-face"><span class="face-scan"></span></div>
+        <div class="home-header">
+          <div class="bot-mark" aria-hidden="true">
+            <div class="bot-face"><span class="face-scan"></span></div>
+          </div>
+          <div class="home-clock" role="status" aria-live="polite">
+            <span class="clock-label">Vietnam time</span>
+            <span class="clock-time" id="vn-clock">--:--:--</span>
+            <span class="clock-date" id="vn-date">--</span>
+          </div>
         </div>
         <p class="eyebrow">Access control system</p>
         <h1 id="home-title">DeepFace</h1>
@@ -345,5 +398,35 @@
         </div>
       </section>
     </main>
+    <script>
+      const clockEl = document.getElementById("vn-clock");
+      const dateEl = document.getElementById("vn-date");
+
+      function updateVietnamTime() {
+        if (!clockEl || !dateEl) {
+          return;
+        }
+
+        const now = new Date();
+        const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+
+        clockEl.textContent = timeFormatter.format(now);
+        dateEl.textContent = dateFormatter.format(now);
+      }
+
+      updateVietnamTime();
+      setInterval(updateVietnamTime, 1000);
+    </script>
   </body>
 </html>
