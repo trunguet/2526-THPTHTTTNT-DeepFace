@@ -160,10 +160,15 @@
         line-height: 1.52;
       }
 
-      .pipeline {
+      .pipeline-block {
         margin-top: clamp(15px, 1.3vw, 22px);
         width: 100%;
         max-width: 100%;
+        display: grid;
+        gap: clamp(7px, 0.55vw, 9px);
+      }
+
+      .pipeline {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -171,6 +176,14 @@
         color: var(--green-soft);
         font-size: clamp(9px, 0.62vw, 11px);
         font-weight: 650;
+      }
+
+      .pipeline-label {
+        width: clamp(84px, 6.1vw, 98px);
+        padding: 0;
+        color: #85aa9f;
+        font-size: clamp(8px, 0.54vw, 9px);
+        text-transform: uppercase;
       }
 
       .pipeline span {
@@ -535,12 +548,21 @@
             thời gian thực và lưu vết quyết định truy cập cho quản trị viên.
           </p>
 
-          <div class="pipeline" aria-label="Luong xu ly">
-            <span>Camera</span><i>→</i>
-            <span>FastAPI</span><i>→</i>
-            <span>Redis Queue</span><i>→</i>
-            <span>DeepFace</span><i>→</i>
-            <span>Qdrant</span>
+          <div class="pipeline-block" aria-label="Luong xu ly truy cap">
+            <div class="pipeline">
+              <b class="pipeline-label">Capture &amp; Queue</b>
+              <span>Camera</span><i>→</i>
+              <span>FastAPI</span><i>→</i>
+              <span>MinIO</span><i>+</i>
+              <span>Redis Queue</span>
+            </div>
+            <div class="pipeline">
+              <b class="pipeline-label">Verify &amp; Record</b>
+              <span>AI Worker / DeepFace</span><i>→</i>
+              <span>Qdrant</span><i>→</i>
+              <span>PostgreSQL</span><i>→</i>
+              <span>UI Result</span>
+            </div>
           </div>
 
           <p class="stack-title">Technology checklist</p>
