@@ -50,6 +50,10 @@
 
 ---
 
+## Báo Cáo Bài Tập Lớn
+
+**Tài liệu báo cáo chính thức:** [Mở báo cáo PDF (`report.pdf`)](report.pdf)
+
 <table>
   <tr>
     <td align="center" width="25%">
@@ -392,7 +396,7 @@ docker compose down -v
 | Backend health | `http://localhost:8000/health` | Kiểm tra API |
 | Backend docs | `http://localhost:8000/docs` | Swagger UI |
 | MinIO console | `http://localhost:9001` | Object storage console |
-| Qdrant HTTP | `http://localhost:6333` | Vector DB API |
+| Qdrant HTTP | `http://localhost:6333/dashboard` | Vector DB API |
 | Prometheus | `http://localhost:9090` | Metrics |
 | Alertmanager | `http://localhost:9093` | Alert routing |
 | Grafana | `http://localhost:3000` | Dashboard |
