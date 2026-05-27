@@ -196,28 +196,34 @@
         box-shadow:
           inset 0 -10px 20px rgba(85, 234, 219, 0.08),
           0 0 22px rgba(85, 234, 219, 0.2);
+        --eye-size: 8px;
+        --eye-gap: 18px;
+        --eye-y: 20px;
+        --mouth-width: 22px;
+        --mouth-y: 38px;
       }
 
       .bot-face::before {
         position: absolute;
-        top: 19px;
-        left: 15px;
-        width: 10px;
-        height: 10px;
+        top: var(--eye-y);
+        left: calc(50% - (var(--eye-gap) / 2) - (var(--eye-size) / 2));
+        width: var(--eye-size);
+        height: var(--eye-size);
         border-radius: 50%;
         background: var(--cyan);
-        box-shadow: 20px 0 0 var(--cyan);
+        box-shadow: var(--eye-gap) 0 0 var(--cyan);
         content: "";
       }
 
       .bot-face::after {
         position: absolute;
-        right: 16px;
-        bottom: 14px;
-        left: 16px;
+        top: var(--mouth-y);
+        left: 50%;
+        width: var(--mouth-width);
         height: 4px;
         border-radius: 999px;
         background: #d8f6ff;
+        transform: translateX(-50%);
         content: "";
       }
 
