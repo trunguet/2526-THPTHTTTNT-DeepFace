@@ -17,6 +17,9 @@ import type { User } from "./types/user";
 
 const TOKEN_STORAGE_KEY = "deepface_admin_token";
 const SIDEBAR_STORAGE_KEY = "deepface_admin_sidebar";
+const THEME_STORAGE_KEY = "deepface_admin_theme";
+
+type ThemeMode = "light" | "dark";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() =>
@@ -27,6 +30,19 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed",
   );
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "light" || stored === "dark") {
+      return stored;
+    }
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    ) {
+      return "dark";
+    }
+    return "light";
+  });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -77,6 +93,11 @@ export default function App() {
     void bootstrapSession();
   }, [token]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoggingIn(true);
@@ -116,6 +137,10 @@ export default function App() {
       );
       return next;
     });
+  }
+
+  function handleToggleTheme() {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   }
 
   const activeEmployees = employees.filter(
@@ -194,6 +219,8 @@ export default function App() {
         onLogout={handleLogout}
         onNavigate={setActiveView}
         onToggleCollapse={handleToggleSidebar}
+        onToggleTheme={handleToggleTheme}
+        theme={theme}
         user={user}
       />
       <section className="content-shell">{content}</section>
