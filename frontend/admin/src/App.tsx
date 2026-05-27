@@ -16,6 +16,7 @@ import type { AccessLog } from "./types/log";
 import type { User } from "./types/user";
 
 const TOKEN_STORAGE_KEY = "deepface_admin_token";
+const SIDEBAR_STORAGE_KEY = "deepface_admin_sidebar";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() =>
@@ -23,6 +24,9 @@ export default function App() {
   );
   const [user, setUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed",
+  );
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -103,6 +107,17 @@ export default function App() {
     setLogs([]);
   }
 
+  function handleToggleSidebar() {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(
+        SIDEBAR_STORAGE_KEY,
+        next ? "collapsed" : "expanded",
+      );
+      return next;
+    });
+  }
+
   const activeEmployees = employees.filter(
     (employee) => employee.status === "active",
   );
@@ -172,11 +187,13 @@ export default function App() {
     );
 
   return (
-    <main className="app-shell">
+    <main className={isSidebarCollapsed ? "app-shell sidebar-collapsed" : "app-shell"}>
       <Sidebar
         activeView={activeView}
+        isCollapsed={isSidebarCollapsed}
         onLogout={handleLogout}
         onNavigate={setActiveView}
+        onToggleCollapse={handleToggleSidebar}
         user={user}
       />
       <section className="content-shell">{content}</section>
