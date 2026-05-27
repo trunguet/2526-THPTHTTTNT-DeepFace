@@ -158,6 +158,11 @@ p {
   border: 0;
   border-radius: 8px;
   font-weight: 900;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .nav-tabs button,
@@ -179,6 +184,37 @@ p {
   padding: 12px 16px;
   color: white;
   background: var(--accent);
+}
+
+.nav-tabs button:not(:disabled):hover,
+.segmented-control button:not(:disabled):hover,
+.ghost-button:not(:disabled):hover,
+.secondary-button:not(:disabled):hover,
+.primary-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(15, 107, 92, 0.2);
+}
+
+.nav-tabs button:not(:disabled):hover,
+.segmented-control button:not(:disabled):hover,
+.ghost-button:not(:disabled):hover,
+.secondary-button:not(:disabled):hover {
+  background: #c8e8da;
+}
+
+.nav-tabs button.active:not(:disabled):hover,
+.segmented-control button.active:not(:disabled):hover,
+.primary-button:not(:disabled):hover {
+  color: white;
+  background: var(--accent-strong);
+}
+
+.nav-tabs button:not(:disabled):active,
+.segmented-control button:not(:disabled):active,
+.ghost-button:not(:disabled):active,
+.secondary-button:not(:disabled):active,
+.primary-button:not(:disabled):active {
+  transform: translateY(0);
 }
 
 .page-grid {
@@ -707,6 +743,24 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-tabs button,
+  .segmented-control button,
+  .ghost-button,
+  .secondary-button,
+  .primary-button {
+    transition: none;
+  }
+
+  .nav-tabs button:not(:disabled):hover,
+  .segmented-control button:not(:disabled):hover,
+  .ghost-button:not(:disabled):hover,
+  .secondary-button:not(:disabled):hover,
+  .primary-button:not(:disabled):hover {
+    transform: none;
+  }
 }
 
 @media (max-width: 920px) {

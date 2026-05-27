@@ -171,6 +171,11 @@ th {
   border: 0;
   border-radius: 8px;
   font-weight: 800;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .nav-item {
@@ -238,6 +243,11 @@ th {
   color: var(--accent-strong);
   background: #dcefe7;
   font-weight: 800;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .section-tabs button.active {
@@ -335,7 +345,7 @@ th {
   background: var(--accent);
 }
 
-.primary-button:hover {
+.primary-button:not(:disabled):hover {
   background: var(--accent-strong);
 }
 
@@ -351,6 +361,44 @@ th {
   padding: 10px 13px;
   color: white;
   background: var(--danger);
+}
+
+.nav-item:not(:disabled):hover,
+.ghost-button:not(:disabled):hover,
+.secondary-button:not(:disabled):hover,
+.small-button:not(:disabled):hover,
+.primary-button:not(:disabled):hover,
+.danger-button:not(:disabled):hover,
+.section-tabs button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(20, 107, 82, 0.2);
+}
+
+.ghost-button:not(:disabled):hover,
+.secondary-button:not(:disabled):hover,
+.small-button:not(:disabled):hover,
+.section-tabs button:not(:disabled):hover {
+  background: #c8e8da;
+}
+
+.section-tabs button.active:not(:disabled):hover {
+  color: white;
+  background: var(--accent-strong);
+}
+
+.danger-button:not(:disabled):hover {
+  background: #962a2a;
+  box-shadow: 0 8px 18px rgba(180, 50, 50, 0.2);
+}
+
+.nav-item:not(:disabled):active,
+.ghost-button:not(:disabled):active,
+.secondary-button:not(:disabled):active,
+.small-button:not(:disabled):active,
+.primary-button:not(:disabled):active,
+.danger-button:not(:disabled):active,
+.section-tabs button:not(:disabled):active {
+  transform: translateY(0);
 }
 
 .inline-form {
@@ -615,6 +663,28 @@ th {
 
 .compact-rules {
   color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .ghost-button,
+  .secondary-button,
+  .small-button,
+  .danger-button,
+  .primary-button,
+  .section-tabs button {
+    transition: none;
+  }
+
+  .nav-item:not(:disabled):hover,
+  .ghost-button:not(:disabled):hover,
+  .secondary-button:not(:disabled):hover,
+  .small-button:not(:disabled):hover,
+  .primary-button:not(:disabled):hover,
+  .danger-button:not(:disabled):hover,
+  .section-tabs button:not(:disabled):hover {
+    transform: none;
+  }
 }
 
 @media (max-width: 980px) {

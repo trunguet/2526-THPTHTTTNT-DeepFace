@@ -91,6 +91,10 @@ export default function App() {
   }
 
   function handleLogout() {
+    if (!window.confirm("Are you sure you want to sign out?")) {
+      return;
+    }
+
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
     setUser(null);
