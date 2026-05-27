@@ -50,6 +50,10 @@
 
 ---
 
+## Báo Cáo Bài Tập Lớn
+
+**Tài liệu báo cáo chính thức:** [Mở báo cáo PDF (`report.pdf`)](report.pdf)
+
 <table>
   <tr>
     <td align="center" width="25%">
