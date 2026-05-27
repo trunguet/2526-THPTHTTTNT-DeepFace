@@ -186,6 +186,10 @@ Chi tiết phân công, phạm vi phối hợp và nguyên tắc hỗ trợ tr�
 
 ## Giao Diện Demo
 
+### Single Page Giới Thiệu Hệ Thống
+
+![DeepFace Access Control single page presentation](docs/screenshots/single-page-presentation.png)
+
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Home gateway" width="900">
 </p>
